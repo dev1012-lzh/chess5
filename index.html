@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chess of Five</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,457&display=swap');
+
+        :root {
+            --glass: rgba(255, 255, 255, 0.07);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --accent: #00ffff;
+            --p1-stone: radial-gradient(circle at 30% 30%, #444, #000);
+            --p2-stone: radial-gradient(circle at 30% 30%, #fff, #bbbbbb);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Google Sans Flex', sans-serif;
+            font-variation-settings: "wght" 457, "opsz" 12;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #474a88 0%, #696979 100%);
+            color: white;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- EMOJI LOOP LOADER --- */
+        #loader-wrapper {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        .emoji-loop {
+            font-size: 3rem;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            background: var(--glass);
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 20px var(--accent);
+            animation: boxPulse 2s infinite ease-in-out;
+            position: relative;
+        }
+
+        .emoji-loop::after {
+            content: "🌑";
+            /* Starting emoji */
+            animation: emojiSwap 2s infinite step-end;
+        }
+
+        @keyframes emojiSwap {
+            0% {
+                content: "🌑";
+            }
+
+            20% {
+                content: "🌒";
+            }
+
+            40% {
+                content: "🌓";
+            }
+
+            60% {
+                content: "🌔";
+            }
+
+            80% {
+                content: "🌕";
+            }
+
+            100% {
+                content: "🌑";
+            }
+        }
+
+        @keyframes boxPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                outline: 0px solid var(--accent);
+                outline-offset: 10px;
+            }
+
+            50% {
+                transform: scale(1.1);
+                outline: 2px solid var(--accent);
+                outline-offset: 25px;
+            }
+        }
+
+        .loading-text {
+            margin-top: 40px;
+            letter-spacing: 4px;
+            font-size: 0.8rem;
+            color: var(--accent);
+
+        }
+
+        /* --- GAME ENGINE --- */
+        #main-game {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 1s ease;
+            display: flex;
+            flex-direction: row;
+            gap: 30px;
+            padding: 20px;
+            width: 100%;
+            max-width: 1100px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loaded #main-game {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .loaded #loader-wrapper {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .panel {
+            width: 260px;
+            padding: 30px;
+            border-radius: 28px;
+            background: var(--glass);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .status-box {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border-left: 4px solid var(--accent);
+            font-variation-settings: "wght" 600;
+        }
+
+        .board-wrapper {
+            position: relative;
+            padding: 0;
+            background: var(--glass);
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            line-height: 0;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            grid-template-rows: repeat(15, 1fr);
+            width: 90vw;
+            height: 90vw;
+            max-width: 600px;
+            max-height: 600px;
+        }
+
+        .cell {
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stone {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            z-index: 5;
+            animation: stoneDrop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .black {
+            background: var(--p1-stone);
+            box-shadow: 0 4px 8px #000;
+        }
+
+        .white {
+            background: var(--p2-stone);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        @keyframes stoneDrop {
+            0% {
+                transform: scale(2);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .win-line {
+            position: absolute;
+            height: 6px;
+            background: var(--accent);
+            box-shadow: 0 0 20px var(--accent);
+            z-index: 10;
+            transform-origin: 0 50%;
+            display: none;
+            border-radius: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            color: #fff;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        @media (max-width: 850px) {
+            #main-game {
+                flex-direction: column;
+            }
+
+            .panel {
+                width: 100%;
+                order: 2;
+            }
+
+            .board-wrapper {
+                order: 1;
+            }
+        }
+
+        strikethrough {
+            text-decoration: line-through;
+            color: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- EMOJI LOOP LOADER -->
+    <div id="loader-wrapper">
+        <div class="emoji-loop"></div>
+        <div class="loading-text"></div>
+        <script>
+            const loadingText = document.querySelector('.loading-text');
+            const loadingMessages = [
+                "what's your strategy?",
+                "I don't know what I've created -lzh",
+                "Made with 🔪",
+                "Made during freetime... (huh)",
+                "Keep trying. ",
+                "I am watching you. 🔪 (JK)"
+
+            ];
+            loadingText.innerText = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+        </script>
+    </div>
+
+    <div id="main-game">
+        <div class="panel">
+            <h1 style="font-size: 1.4rem; font-variation-settings: 'wght' 600;">Chess of Five <strikethrough>Sons
+                </strikethrough> 五<strikethrough>"</strikethrough>子<strikethrough>"</strikethrough>棋</h1>
+            <p style="font-size: 0.7rem; opacity: 0.6; margin-bottom: 10px;">This is not an AI. <br> You are not
+                competing with AI, I dont care what gemini or gpt. This is just algorithm.</p>
+            <div class="status-box" id="status">INIT...</div>
+            <button onclick="resetGame()">Restart</button>
+        </div>
+
+        <div class="board-wrapper">
+            <div id="board"></div>
+            <div id="win-line" class="win-line"></div>
+        </div>
+    </div>
+
+    <script>
+        const SIZE = 15;
+        const boardEl = document.getElementById("board");
+        const statusEl = document.getElementById("status");
+        const winLine = document.getElementById("win-line");
+        let board = [], gameOver = false;
+
+        const vibrate = (p = 15) => { if ("vibrate" in navigator) navigator.vibrate(p); };
+
+        window.onload = () => {
+            setTimeout(() => {
+                document.body.classList.add('loaded');
+                initGame();
+            }, 3000); // 3s loop for the emoji sequence
+        };
+
+        function initGame() {
+            boardEl.innerHTML = "";
+            board = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
+            gameOver = false;
+            winLine.style.display = "none";
+            statusEl.innerText = "YOUR TURN. Not always lady first, but always human first.";
+            for (let y = 0; y < SIZE; y++) {
+                for (let x = 0; x < SIZE; x++) {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.onclick = () => handleMove(x, y);
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        function handleMove(x, y) {
+            if (gameOver || board[y][x] !== 0) return;
+            vibrate(20);
+            placeStone(x, y, 1);
+            if (checkWin(x, y, 1)) return endGame("Unbelievable. Screenshot this. Time to update my code.");
+            function isBoardFull() {
+                // Check if every single entry in the 2D array is non-zero
+                return board.every(row => row.every(cell => cell !== 0));
+            }
+
+            if (isBoardFull()) {
+                vibrate([50, 50, 50, 50, 50]); // Distinguishable "stutter" vibration for draw
+                return endGame("Deadlock? Are you an AI? How did you do that?");
+            }
+            const preparingMsg = [
+                "Your CPU is thinking",
+                "Calculating best move... ",
+                "Hmmmmm",
+                "Slaping my face to get the best move..",
+
+                "Ofc. I am not cheating, just calculating",
+                "Okay. It works.",
+                "Slaping my face to get the best move.."
+
+
+
+            ];
+            statusEl.innerText = preparingMsg[Math.floor(Math.random() * preparingMsg.length)];
+
+            setTimeout(aiMove, Math.floor(Math.random() * 1000) + 500); // Simulate thinking time (0.5s to 1.5s)
+            // Add this helper function
+
+        }
+        // --- ENHANCED AI LOGARITHM ---
+
+        function aiMove() {
+            if (gameOver) return;
+
+            let bestScore = -Infinity;
+            let moves = [];
+
+            // 1. Scan all empty cells
+            for (let y = 0; y < SIZE; y++) {
+                for (let x = 0; x < SIZE; x++) {
+                    if (board[y][x] === 0) {
+                        // Calculate offensive score (AI winning)
+                        let attackScore = evaluatePosition(x, y, 2);
+                        // Calculate defensive score (Human winning - block this!)
+                        let defenseScore = evaluatePosition(x, y, 1);
+
+                        // Weighting: If defense detects a threat, prioritize it highly
+                        let totalScore = attackScore + (defenseScore * 1.1);
+
+                        if (totalScore > bestScore) {
+                            bestScore = totalScore;
+                            moves = [{ x, y }];
+                        } else if (totalScore === bestScore) {
+                            moves.push({ x, y });
+                        }
+                    }
+                }
+            }
+            function isBoardFull() {
+                // Check if every single entry in the 2D array is non-zero
+                return board.every(row => row.every(cell => cell !== 0));
+            }
+
+            if (isBoardFull()) {
+                vibrate([50, 50, 50, 50, 50]); // Distinguishable "stutter" vibration for draw
+                return endGame("Deadlock. It's a draw. How you did that?");
+            }
+            // 2. Pick the best move (randomize if scores are tied for unpredictability)
+            if (moves.length > 0) {
+                const move = moves[Math.floor(Math.random() * moves.length)];
+                vibrate(40);
+                placeStone(move.x, move.y, 2);
+                const aiWinMsg = [
+                    "CPU win. Better luck next time!",
+                    "No judgement. Code wins.",
+                    "I win. But you are improving.",
+                    "I win. Let's call it a draw? ",
+                    "Save your brain for biology; this requires a CPU.", "Know what. Your brain for addmath; Leave this to a CPU."
+
+                ];
+                if (checkWin(move.x, move.y, 2)) return endGame(aiWinMsg[Math.floor(Math.random() * aiWinMsg.length)]);
+            }
+            const postMoveMsg = [
+                "Your CPU has made its move.",
+                "Computer has placed its stone.",
+                "Hmm, interesting move. Now it's yours",
+                "Yours?",
+                "Don't slap your face to get the best move -kinghong ",
+                "I'm done. Now, it's your turn.",
+                "Don't slap your face to get the best move -kinghong ",
+                "No championship on this. Let me once?"
+
+            ];
+            statusEl.innerText = postMoveMsg[Math.floor(Math.random() * postMoveMsg.length)];
+        }
+
+        function evaluatePosition(x, y, p) {
+            let total = 0;
+            const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+
+            for (let [dx, dy] of dirs) {
+                let pattern = checkPattern(x, y, dx, dy, p);
+                total += analyzePattern(pattern);
+            }
+            return total;
+        }
+
+        // Scans a window of 5 cells in a direction to find patterns
+        function checkPattern(x, y, dx, dy, p) {
+            let count = 1;
+            let block = 0;
+            let empty = 0;
+
+            // Check forward
+            for (let i = 1; i < 5; i++) {
+                let nx = x + dx * i, ny = y + dy * i;
+                if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE) {
+                    if (board[ny][nx] === p) count++;
+                    else if (board[ny][nx] === 0) { empty++; break; }
+                    else { block++; break; }
+                } else { block++; break; }
+            }
+            // Check backward
+            for (let i = 1; i < 5; i++) {
+                let nx = x - dx * i, ny = y - dy * i;
+                if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE) {
+                    if (board[ny][nx] === p) count++;
+                    else if (board[ny][nx] === 0) { empty++; break; }
+                    else { block++; break; }
+                } else { block++; break; }
+            }
+            return { count, block, empty };
+        }
+
+        // Assigns weight based on the "danger" of the pattern
+        function analyzePattern(p) {
+            // 5 in a row
+            if (p.count >= 5) return 1000000;
+
+            if (p.block === 0) { // Open on both ends
+                switch (p.count) {
+                    case 4: return 50000;  // Live 4: Unblockable
+                    case 3: return 5000;   // Live 3: Must be blocked
+                    case 2: return 500;
+                    case 1: return 50;
+                }
+            } else if (p.block === 1) { // Blocked on one end
+                switch (p.count) {
+                    case 4: return 10000;  // Blocked 4: Must block immediate
+                    case 3: return 800;
+                    case 2: return 100;
+                    case 1: return 10;
+                }
+            }
+            return 0;
+        }
+
+        function countDir(x, y, dx, dy, p) {
+            let c = 0, nx = x + dx, ny = y + dy;
+            while (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === p) { c++; nx += dx; ny += dy; }
+            return c;
+        }
+
+        function placeStone(x, y, p) {
+            board[y][x] = p;
+            const cell = boardEl.children[y * SIZE + x];
+            const stone = document.createElement("div");
+            stone.className = `stone ${p === 1 ? 'black' : 'white'}`;
+            cell.appendChild(stone);
+        }
+
+        function checkWin(x, y, p) {
+            const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+            for (let [dx, dy] of dirs) {
+                let cells = [[x, y]];
+                collect(cells, x, y, dx, dy, p);
+                collect(cells, x, y, -dx, -dy, p);
+                if (cells.length >= 5) {
+                    drawWinLine(cells);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function collect(arr, x, y, dx, dy, p) {
+            let nx = x + dx, ny = y + dy;
+            while (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === p) { arr.push([nx, ny]); nx += dx; ny += dy; }
+        }
+
+        function drawWinLine(cells) {
+            gameOver = true;
+            vibrate([80, 50, 80, 50, 150]);
+            cells.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+            const start = cells[0], end = cells[cells.length - 1];
+            const cellSize = boardEl.clientWidth / SIZE;
+            const x1 = (start[0] * cellSize) + (cellSize / 2), y1 = (start[1] * cellSize) + (cellSize / 2);
+            const x2 = (end[0] * cellSize) + (cellSize / 2), y2 = (end[1] * cellSize) + (cellSize / 2);
+            winLine.style.width = Math.hypot(x2 - x1, y2 - y1) + "px";
+            winLine.style.left = x1 + "px"; winLine.style.top = y1 + "px";
+            winLine.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI}deg)`;
+            winLine.style.display = "block";
+        }
+
+        function endGame(msg) { statusEl.innerText = msg; }
+        function resetGame() { initGame(); }
+    </script>
+</body>
+
+</html>
