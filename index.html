@@ -384,6 +384,7 @@
             OPEN_THREE: 50000,    // Live Three (0XXX0)
             DEVELOPMENT: 500      // General growth
         };
+        // --- GRANDMASTER SPATIAL INFERENCE (v4.0) ---
 
         function aiMove() {
             if (gameOver) return;
@@ -393,21 +394,18 @@
             const activeCells = getActiveSearchSpace();
 
             for (const { x, y } of activeCells) {
-                // Head 1: Pure Aggression (Can I win?)
+                // Head 1: Offensive Intent
                 let attackScore = evaluateGrandmaster(x, y, 2);
 
-                // Head 2: Hyper-Paranoia (Is the Human about to embarrass me?)
+                // Head 2: Defensive Paranoia
                 let defenseScore = evaluateGrandmaster(x, y, 1);
 
-                // The IQ Shift: 
-                // If the Human has a winning setup, the AI ignores its own plans entirely.
                 let totalScore;
                 if (defenseScore >= WEIGHTS.OPEN_FOUR) {
-                    totalScore = defenseScore * 2.0; // EMERGENCY BLOCK
+                    totalScore = defenseScore * 2.0; // EMERGENCY BLOCK OVERRIDE
                 } else if (defenseScore >= WEIGHTS.OPEN_THREE) {
                     totalScore = defenseScore * 1.5; // AGGRESSIVE DENIAL
                 } else {
-                    // If no immediate threat, look for the most strategic placement
                     totalScore = attackScore + (defenseScore * 0.9);
                 }
 
@@ -424,14 +422,17 @@
                 vibrate(40);
                 placeStone(move.x, move.y, 2);
 
-                const aiWinMsg = [
-                    "My IQ just spiked. GG.",
-                    "Calculated. Every. Single. Move.",
-                    "You were playing checkers. I was playing 4D Gomoku.",
-                    "Calculated. Better luck in the next life."
-                ];
-                if (checkWin(move.x, move.y, 2)) return endGame(aiWinMsg[Math.floor(Math.random() * aiWinMsg.length)]);
+                if (checkWin(move.x, move.y, 2)) {
+                    const aiWinMsg = [
+                        "My IQ just spiked. GG.",
+                        "Calculated. Every. Single. Move.",
+                        "Calculated. Better luck in the next life."
+                    ];
+                    return endGame(aiWinMsg[Math.floor(Math.random() * aiWinMsg.length)]);
+                }
             }
+
+            if (isBoardFull()) return endGame("Deadlock. Silicon and Carbon are equal today.");
 
             const postMoveMsg = [
                 "Try finding a hole in THAT logic.",
@@ -451,8 +452,6 @@
             for (let [dx, dy] of directions) {
                 const seq = getTokenSequence(x, y, dx, dy);
 
-                // --- PATTERN RECOGNITION ---
-
                 // 1. FIVE IN A ROW (WIN)
                 if (new RegExp(`${s}{4}S|${s}{3}S${s}|${s}{2}S${s}{2}|${s}S${s}{3}|S${s}{4}`).test(seq))
                     return WEIGHTS.FATAL;
@@ -461,20 +460,15 @@
                 if (new RegExp(`0${s}{3}S0|0${s}{2}S${s}0|0${s}S${s}{2}0|0S${s}{3}0`).test(seq))
                     score += WEIGHTS.OPEN_FOUR;
 
-                // 3. BROKEN FOUR (X0XXX / XX0XX)
+                // 3. BROKEN FOUR (X0XXX)
                 if (new RegExp(`${s}{3}0S|S0${s}{3}|${s}0${s}{2}S|S${s}{2}0${s}`).test(seq))
                     score += WEIGHTS.BROKEN_FOUR;
 
                 // 4. OPEN THREE (0XXX0)
                 if (new RegExp(`0${s}{2}S0|0${s}S${s}0|0S${s}{2}0`).test(seq))
                     score += WEIGHTS.OPEN_THREE;
-
-                // 5. BLOCKED THREE (BXXX0)
-                if (new RegExp(`${s}{2}S0|0S${s}{2}|${s}S${s}0|0${s}S${s}`).test(seq))
-                    score += WEIGHTS.DEVELOPMENT;
             }
 
-            // Strategic Center-Control Bias (Highly important in early game)
             const centerDist = Math.abs(7 - x) + Math.abs(7 - y);
             score += (15 - centerDist) * 10;
 
