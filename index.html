@@ -372,138 +372,175 @@
             // Add this helper function
 
         }
-        // --- ENHANCED AI LOGARITHM ---
+
+
+        // --- INTENSE SPATIAL INFERENCE ENGINE (v3.0) ---
+        // --- GRANDMASTER SPATIAL INFERENCE (v4.0) ---
+
+        const WEIGHTS = {
+            FATAL: 10000000,      // Immediate Win (5)
+            OPEN_FOUR: 500000,    // Unblockable (0XXXX0)
+            BROKEN_FOUR: 100000,  // Gap Four (XX0XX)
+            OPEN_THREE: 50000,    // Live Three (0XXX0)
+            DEVELOPMENT: 500      // General growth
+        };
 
         function aiMove() {
             if (gameOver) return;
 
             let bestScore = -Infinity;
             let moves = [];
+            const activeCells = getActiveSearchSpace();
 
-            // 1. Scan all empty cells
-            for (let y = 0; y < SIZE; y++) {
-                for (let x = 0; x < SIZE; x++) {
-                    if (board[y][x] === 0) {
-                        // Calculate offensive score (AI winning)
-                        let attackScore = evaluatePosition(x, y, 2);
-                        // Calculate defensive score (Human winning - block this!)
-                        let defenseScore = evaluatePosition(x, y, 1);
+            for (const { x, y } of activeCells) {
+                // Head 1: Pure Aggression (Can I win?)
+                let attackScore = evaluateGrandmaster(x, y, 2);
 
-                        // Weighting: If defense detects a threat, prioritize it highly
-                        let totalScore = attackScore + (defenseScore * 1.1);
+                // Head 2: Hyper-Paranoia (Is the Human about to embarrass me?)
+                let defenseScore = evaluateGrandmaster(x, y, 1);
 
-                        if (totalScore > bestScore) {
-                            bestScore = totalScore;
-                            moves = [{ x, y }];
-                        } else if (totalScore === bestScore) {
-                            moves.push({ x, y });
-                        }
-                    }
+                // The IQ Shift: 
+                // If the Human has a winning setup, the AI ignores its own plans entirely.
+                let totalScore;
+                if (defenseScore >= WEIGHTS.OPEN_FOUR) {
+                    totalScore = defenseScore * 2.0; // EMERGENCY BLOCK
+                } else if (defenseScore >= WEIGHTS.OPEN_THREE) {
+                    totalScore = defenseScore * 1.5; // AGGRESSIVE DENIAL
+                } else {
+                    // If no immediate threat, look for the most strategic placement
+                    totalScore = attackScore + (defenseScore * 0.9);
+                }
+
+                if (totalScore > bestScore) {
+                    bestScore = totalScore;
+                    moves = [{ x, y }];
+                } else if (totalScore === bestScore) {
+                    moves.push({ x, y });
                 }
             }
-            function isBoardFull() {
-                // Check if every single entry in the 2D array is non-zero
-                return board.every(row => row.every(cell => cell !== 0));
-            }
 
-            if (isBoardFull()) {
-                vibrate([50, 50, 50, 50, 50]); // Distinguishable "stutter" vibration for draw
-                return endGame("Deadlock. It's a draw. How you did that?");
-            }
-            // 2. Pick the best move (randomize if scores are tied for unpredictability)
             if (moves.length > 0) {
                 const move = moves[Math.floor(Math.random() * moves.length)];
                 vibrate(40);
                 placeStone(move.x, move.y, 2);
-                const aiWinMsg = [
-                    "CPU win. Better luck next time!",
-                    "No judgement. Code wins.",
-                    "I win. But you are improving.",
-                    "I win. Let's call it a draw? ",
-                    "Save your brain for biology; this requires a CPU.", "Know what. Your brain for addmath; Leave this to a CPU."
 
+                const aiWinMsg = [
+                    "My IQ just spiked. GG.",
+                    "Calculated. Every. Single. Move.",
+                    "You were playing checkers. I was playing 4D Gomoku.",
+                    "Calculated. Better luck in the next life."
                 ];
                 if (checkWin(move.x, move.y, 2)) return endGame(aiWinMsg[Math.floor(Math.random() * aiWinMsg.length)]);
             }
-            const postMoveMsg = [
-                "Your CPU has made its move.",
-                "Computer has placed its stone.",
-                "Hmm, interesting move. Now it's yours",
-                "Yours?",
-                "Don't slap your face to get the best move -kinghong ",
-                "I'm done. Now, it's your turn.",
-                "Don't slap your face to get the best move -kinghong ",
-                "No championship on this. Let me once?"
 
+            const postMoveMsg = [
+                "Try finding a hole in THAT logic.",
+                "Your move. Choose wisely... if you can.",
+                "Now, yours.",
+                "Don't slap your face.",
+                "Slapping my virtual face... and I found a masterpiece move."
             ];
             statusEl.innerText = postMoveMsg[Math.floor(Math.random() * postMoveMsg.length)];
         }
 
-        function evaluatePosition(x, y, p) {
-            let total = 0;
-            const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+        function evaluateGrandmaster(x, y, p) {
+            let score = 0;
+            const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+            const s = p.toString();
 
-            for (let [dx, dy] of dirs) {
-                let pattern = checkPattern(x, y, dx, dy, p);
-                total += analyzePattern(pattern);
+            for (let [dx, dy] of directions) {
+                const seq = getTokenSequence(x, y, dx, dy);
+
+                // --- PATTERN RECOGNITION ---
+
+                // 1. FIVE IN A ROW (WIN)
+                if (new RegExp(`${s}{4}S|${s}{3}S${s}|${s}{2}S${s}{2}|${s}S${s}{3}|S${s}{4}`).test(seq))
+                    return WEIGHTS.FATAL;
+
+                // 2. OPEN FOUR (0XXXX0)
+                if (new RegExp(`0${s}{3}S0|0${s}{2}S${s}0|0${s}S${s}{2}0|0S${s}{3}0`).test(seq))
+                    score += WEIGHTS.OPEN_FOUR;
+
+                // 3. BROKEN FOUR (X0XXX / XX0XX)
+                if (new RegExp(`${s}{3}0S|S0${s}{3}|${s}0${s}{2}S|S${s}{2}0${s}`).test(seq))
+                    score += WEIGHTS.BROKEN_FOUR;
+
+                // 4. OPEN THREE (0XXX0)
+                if (new RegExp(`0${s}{2}S0|0${s}S${s}0|0S${s}{2}0`).test(seq))
+                    score += WEIGHTS.OPEN_THREE;
+
+                // 5. BLOCKED THREE (BXXX0)
+                if (new RegExp(`${s}{2}S0|0S${s}{2}|${s}S${s}0|0${s}S${s}`).test(seq))
+                    score += WEIGHTS.DEVELOPMENT;
             }
-            return total;
+
+            // Strategic Center-Control Bias (Highly important in early game)
+            const centerDist = Math.abs(7 - x) + Math.abs(7 - y);
+            score += (15 - centerDist) * 10;
+
+            return score;
         }
 
-        // Scans a window of 5 cells in a direction to find patterns
-        function checkPattern(x, y, dx, dy, p) {
-            let count = 1;
-            let block = 0;
-            let empty = 0;
-
-            // Check forward
-            for (let i = 1; i < 5; i++) {
+        function getTokenSequence(x, y, dx, dy) {
+            let tokens = [];
+            for (let i = -4; i <= 4; i++) {
+                if (i === 0) { tokens.push("S"); continue; }
                 let nx = x + dx * i, ny = y + dy * i;
                 if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE) {
-                    if (board[ny][nx] === p) count++;
-                    else if (board[ny][nx] === 0) { empty++; break; }
-                    else { block++; break; }
-                } else { block++; break; }
+                    tokens.push(board[ny][nx]);
+                } else {
+                    tokens.push("B"); // Boundary token
+                }
             }
-            // Check backward
-            for (let i = 1; i < 5; i++) {
-                let nx = x - dx * i, ny = y - dy * i;
-                if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE) {
-                    if (board[ny][nx] === p) count++;
-                    else if (board[ny][nx] === 0) { empty++; break; }
-                    else { block++; break; }
-                } else { block++; break; }
-            }
-            return { count, block, empty };
+            return tokens.join('');
         }
 
-        // Assigns weight based on the "danger" of the pattern
-        function analyzePattern(p) {
-            // 5 in a row
-            if (p.count >= 5) return 1000000;
+        function rateTokenSequence(seq, p) {
+            const s = p; // Self token
+            const o = p === 1 ? 2 : 1; // Opponent token
 
-            if (p.block === 0) { // Open on both ends
-                switch (p.count) {
-                    case 4: return 50000;  // Live 4: Unblockable
-                    case 3: return 5000;   // Live 3: Must be blocked
-                    case 2: return 500;
-                    case 1: return 50;
-                }
-            } else if (p.block === 1) { // Blocked on one end
-                switch (p.count) {
-                    case 4: return 10000;  // Blocked 4: Must block immediate
-                    case 3: return 800;
-                    case 2: return 100;
-                    case 1: return 10;
-                }
-            }
+            // Five in a row (Win)
+            if (seq.includes(`${s}${s}${s}${s}S`) || seq.includes(`S${s}${s}${s}${s}`) || seq.includes(`${s}${s}S${s}${s}`)) return WEIGHTS.WIN;
+
+            // Open Four (Unblockable)
+            if (seq.includes(`0${s}${s}${s}S0`) || seq.includes(`0S${s}${s}${s}0`)) return WEIGHTS.OPEN_FOUR;
+
+            // Blocked Four
+            if (seq.includes(`${s}${s}${s}S0`) || seq.includes(`0S${s}${s}${s}`)) return WEIGHTS.BLOCKED_FOUR;
+
+            // Open Three
+            if (seq.includes(`0${s}${s}S0`) || seq.includes(`0S${s}${s}0`)) return WEIGHTS.OPEN_THREE;
+
             return 0;
         }
 
-        function countDir(x, y, dx, dy, p) {
-            let c = 0, nx = x + dx, ny = y + dy;
-            while (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === p) { c++; nx += dx; ny += dy; }
-            return c;
+        function getActiveSearchSpace() {
+            let space = new Set();
+            let boardEmpty = true;
+            for (let y = 0; y < SIZE; y++) {
+                for (let x = 0; x < SIZE; x++) {
+                    if (board[y][x] !== 0) {
+                        boardEmpty = false;
+                        for (let dy = -2; dy <= 2; dy++) {
+                            for (let dx = -2; dx <= 2; dx++) {
+                                let nx = x + dx, ny = y + dy;
+                                if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === 0) {
+                                    space.add(`${nx},${ny}`);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (boardEmpty) return [{ x: 7, y: 7 }];
+            return Array.from(space).map(s => {
+                const [x, y] = s.split(',').map(Number);
+                return { x, y };
+            });
+        }
+
+        function isBoardFull() {
+            return board.every(row => row.every(cell => cell !== 0));
         }
 
         function placeStone(x, y, p) {
