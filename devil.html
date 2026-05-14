@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOMOKU // TITAN PARANOID-EX</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,457&display=swap');
+
+        :root {
+            --accent: #ff0055;
+            --glass: rgba(5, 5, 5, 0.8);
+            --border: rgba(255, 0, 85, 0.3);
+        }
+
+        body {
+            font-family: 'Google Sans Flex', sans-serif;
+            background: #556fac;
+            color: rgb(54, 49, 49);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #loader {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: 0.8s;
+        }
+
+        .emoji-loop::after {
+            content: "🌑";
+            font-size: 3.5rem;
+            animation: moon 1.5s infinite step-end;
+            filter: drop-shadow(0 0 10px var(--accent));
+        }
+
+        @keyframes moon {
+            0% {
+                content: "🌑"
+            }
+
+            20% {
+                content: "🌒"
+            }
+
+            40% {
+                content: "🌓"
+            }
+
+            60% {
+                content: "🌔"
+            }
+
+            80% {
+                content: "🌕"
+            }
+        }
+
+        .status-panel {
+            margin-bottom: 20px;
+            text-align: center;
+            background: var(--glass);
+            padding: 20px;
+            border-radius: 12px;
+            width: 90vw;
+            max-width: 550px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        #status {
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-weight: 900;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+        }
+
+        #cpu-load {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .board-container {
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            width: 92vw;
+            height: 92vw;
+            max-width: 550px;
+            max-height: 550px;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 6.66% 6.66%;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: crosshair;
+            transition: background 0.2s;
+        }
+
+        .cell:hover {
+            background: rgba(255, 0, 85, 0.1);
+        }
+
+        .stone {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        .p1 {
+            background: #fff;
+            box-shadow: 0 0 15px #fff;
+        }
+
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(0.95);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        button {
+            background: none;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            cursor: pointer;
+            padding: 8px 20px;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+        }
+
+        button:hover {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 0 20px var(--accent);
+        }
+
+        :root {
+            --glass-bg: rgba(22, 27, 46, 0.7);
+            --neon-red: #ff1f5a;
+            --neon-white: #ffffff;
+            --border-glow: rgba(255, 31, 90, 0.3);
+        }
+
+        body {
+            background: radial-gradient(circle at center, #3d518c, #1a1a2e);
+            /* Matches background in image_a369be.png */
+        }
+
+        /* The Glass Header and Board */
+        #header,
+        #board-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8),
+                inset 0 0 15px var(--border-glow);
+            border-radius: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: crosshair;
+            transition: background 0.2s;
+            position: relative;
+            /* Add this so pieces stay inside the cell */
+        }
+
+        .piece {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            /* Remove position: absolute; if you want them centered in the grid cell */
+            opacity: 0;
+            animation: piece-spawn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            will-change: transform, opacity;
+        }
+
+        @keyframes piece-entry {
+            0% {
+                transform: scale(0) rotate(-45deg);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1) rotate(0);
+                opacity: 1;
+            }
+        }
+
+        /* Win Highlight Animation */
+        @keyframes win-pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                filter: brightness(1) drop-shadow(0 0 20px currentColor);
+            }
+
+            50% {
+                transform: scale(1.2);
+                filter: brightness(1.5) drop-shadow(0 0 40px currentColor);
+            }
+        }
+
+        .winning-piece {
+            animation: win-pulse 0.8s infinite ease-in-out !important;
+            z-index: 10;
+        }
+
+        #header::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(0deg,
+                    rgba(0, 0, 0, 0) 0px,
+                    rgba(0, 0, 0, 0.1) 1px,
+                    transparent 2px);
+            pointer-events: none;
+            opacity: 0.3;
+            animation: scanline 10s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(100%);
+            }
+        }
+
+        #board-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+            filter: url(#liquid);
+            /* Apply liquid effect to the pieces inside */
+        }
+
+        .piece {
+            /* Intense Glows */
+            box-shadow: 0 0 20px currentColor, inset 0 0 10px rgba(255, 255, 255, 0.5);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px) scale(1);
+            }
+
+            50% {
+                transform: translateY(-5px) scale(1.02);
+            }
+        }
+
+        /* Background "Neural" Animation */
+        body::before {
+            content: '';
+            position: fixed;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, var(--neon-red), transparent);
+            animation: rotate-bg 20s linear infinite;
+            opacity: 0.05;
+            z-index: -1;
+        }
+
+        @keyframes rotate-bg {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #board-container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px) saturate(180%);
+            /* Enhanced liquid glass effect */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        }
+
+        /* AI Stone Visuals */
+        .red {
+            background: radial-gradient(circle at 30% 30%, #ff4d4d, #b30000);
+            /* Deep red gradient */
+            box-shadow:
+                inset -2px -2px 6px rgba(0, 0, 0, 0.4),
+                0 0 15px rgba(255, 77, 77, 0.6);
+            /* Red glow */
+        }
+
+        /* Specific Glow for Player 2 (TITAN) */
+        .p2 {
+            filter: drop-shadow(0 0 10px #ff0000);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+        }
+
+        .piece {
+            /* Base piece styles from image_a369be.png */
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            position: absolute;
+
+            /* The Animation Fix */
+            opacity: 0;
+            /* Start invisible */
+            animation: piece-spawn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            will-change: transform, opacity;
+            /* Optimization for smoother frame rates */
+        }
+
+        @keyframes piece-spawn {
+            0% {
+                transform: scale(0) translateY(20px);
+                opacity: 0;
+                filter: blur(10px);
+            }
+
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+                filter: blur(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <svg style="display: none;">
+        <defs>
+            <filter id="liquid">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+                    result="liquid" />
+                <feComposite in="SourceGraphic" in2="liquid" operator="atop" />
+            </filter>
+        </defs>
+    </svg>
+    <div id="loader">
+        <div class="emoji-loop"></div>
+        <p style="margin-top:20px; color:#ff0055; letter-spacing:5px">INJECTING PARANOIA-EX...</p>
+    </div>
+
+    <div class="status-panel">
+        <div id="status">v2.3</div>
+        <div id="cpu-load">
+            <span>THREAD_POOL: ACTIVE</span>
+            <span id="depth-stat">DEPTH: 0</span>
+        </div>
+        <button onclick="location.reload()">REBOOT SYSTEM</button>
+    </div>
+
+    <div class="board-container">
+        <div id="board"></div>
+    </div>
+    <script id="worker-code" type="text/javascript-worker">
+        const SIZE = 15;
+
+        self.onmessage = function(e) {
+            const { board, depth, startTime, limit } = e.data;
+            // Safety: Ensure board is valid before starting
+            if (!board || !board[0]) return; 
+            
+            const result = minimax(board, depth, -Infinity, Infinity, true, startTime, limit);
+            self.postMessage(result);
+        };function scorePos(x, y, p, b) {
+        // Determine the opponent's ID
+        const opponent = (p === 1) ? 2 : 1;
+        
+        // Calculate the offensive score (for current player p)
+        let offensiveScore = evaluatePatterns(x, y, p, b);
+        
+        // Calculate the defensive score (what would the opponent get here?)
+        // We multiply this to make TITAN "fear" the human's patterns more.
+        let defensiveScore = evaluatePatterns(x, y, opponent, b) * 1.3; 
+
+        let centerBonus = (8 - Math.max(Math.abs(7 - x), Math.abs(7 - y))) * 10;
+        
+        return offensiveScore + defensiveScore + centerBonus;
+    }
+
+    // Helper to keep the main function clean
+        function evaluatePatterns(x, y, p, b) {
+            let s = 0;
+            const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+            
+            for (let [dx, dy] of dirs) {
+                let line = "";
+                for (let i = -4; i <= 4; i++) {
+                    let nx = x + dx * i;
+                    let ny = y + dy * i;
+                    // SIZE must be accessible (e.g., 15)
+                    if (ny >= 0 && ny < 15 && b[ny] !== undefined && nx >= 0 && nx < 15) {
+                        let cell = b[ny][nx];
+                        line += (cell === p) ? '1' : (cell === 0 ? '0' : 'X');
+                    } else {
+                        line += 'X';
+                    }
+                }
+
+                // SCORING LOGIC
+                if (line.includes("11111")) s += 100000000; 
+                else if (line.includes("011110")) s += 1000000; // Open Four
+                else if (/01111|11110|10111|11101|11011/.test(line)) s += 500000;
+                else if (line.includes("01110")) s += 80000;   // Open Three
+                else if (/011010|010110/.test(line)) s += 70000;
+                else if (/00111|11100|01011|11010|01101/.test(line)) s += 15000;
+                else if (line.includes("0110") || line.includes("01010")) s += 5000;
+            }
+            return s;
+        }
+        function evaluate(b) {
+            let score = 0;
+                for (let y = 0; y < SIZE; y++) {
+                    for (let x = 0; x < SIZE; x++) {
+                        if (b[y] && b[y][x] !== 0) {
+                            let p = b[y][x];
+                            let pScore = scorePos(x, y, p, b);
+
+                            // If AI is p2 (Red) and Human is p1 (White):
+                            if (p === 2) { 
+                                score += pScore; // AI's own progress
+                            } else {
+                                // Punish the AI if the Human (White) is close to winning
+                                score -= pScore * 10; 
+                            }
+                        }
+                    }
+                }
+                return score;
+        }
+        
+        function checkWin(x, y, p, board) {
+        const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+        for (let [dx, dy] of dirs) {
+            let c = 1;
+            for (let i = 1; i < 5; i++) {
+                let nx = x + dx * i, ny = y + dy * i;
+                if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === p) c++; else break;
+            }
+            for (let i = 1; i < 5; i++) {
+                let nx = x - dx * i, ny = y - dy * i;
+                if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === p) c++; else break;
+            }
+            if (c >= 5) return true;
+        }
+        return false;
+    }
+        function getMoves(b) {
+            let moves = [];
+            for (let y = 0; y < SIZE; y++) {
+                for (let x = 0; x < SIZE; x++) {
+                    if (b[y][x] === 0) {
+                        let near = false;
+                        for (let i = -1; i <= 1 && !near; i++) {
+                            for (let j = -1; j <= 1; j++) {
+                                let ny = y + i, nx = x + j;
+                                if (ny >= 0 && ny < SIZE && nx >= 0 && nx < SIZE && b[ny][nx] !== 0) near = true;
+                            }
+                        }
+                        if (near) moves.push({ x, y });
+                    }
+                }
+            }
+            return moves.length ? moves : [{ x: 7, y: 7 }];
+        }
+
+        function minimax(b, depth, alpha, beta, maxing, start, limit) {
+
+            
+            // Time-out check to prevent infinite "Calculating" state
+            if (Date.now() - start > limit || depth === 0) {
+                return { score: evaluate(b) };
+            }
+
+            let moves = getMoves(b);
+            
+            // Move Ordering: Essential for Alpha-Beta Pruning speed
+            moves.sort((a, b) => {
+                return scorePos(b.x, b.y, maxing ? 2 : 1, b) - scorePos(a.x, a.y, maxing ? 2 : 1, b);
+            });
+
+            let best = maxing ? { score: -Infinity } : { score: Infinity };
+
+            for (let m of moves) {
+                
+                // Inside the for (let m of moves) loop
+                b[m.y][m.x] = maxing ? 2 : 1;
+                // If this specific move creates a 5-in-a-row, take it NOW.
+                if (checkWin(m.x, m.y, maxing ? 2 : 1, b)) {
+                    b[m.y][m.x] = 0;
+                    return { score: maxing ? 10000000 : -10000000, x: m.x, y: m.y };
+                }
+                let res = minimax(b, depth - 1, alpha, beta, !maxing, start, limit);
+                b[m.y][m.x] = 0;
+
+                if (maxing) {
+                    if (res.score > best.score) { 
+                        best.score = res.score; 
+                        best.x = m.x; 
+                        best.y = m.y; 
+                    }
+                    alpha = Math.max(alpha, best.score);
+                } else {
+                    if (res.score < best.score) { 
+                        best.score = res.score; 
+                        best.x = m.x; 
+                        best.y = m.y; 
+                    }
+                    beta = Math.min(beta, best.score);
+                }
+                if (beta <= alpha) break;
+            }
+            return best;
+        }
+    </script>
+    <script>
+        const SIZE = 15, TIME_LIMIT = 1800;
+        let board = Array(SIZE).fill().map(() => Array(SIZE).fill(0)), gameOver = false;
+        const boardEl = document.getElementById("board"), statusEl = document.getElementById("status");
+
+        // Initialize Web Worker from the script tag
+        const blob = new Blob([document.getElementById('worker-code').textContent], { type: 'text/javascript' });
+        const titan = new Worker(URL.createObjectURL(blob));
+
+        window.onload = () => {
+            setTimeout(() => {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').remove(), 800);
+            }, 1500);
+            init();
+        };
+        function init() {
+            boardEl.innerHTML = "";
+            for (let i = 0; i < SIZE * SIZE; i++) {
+                let cell = document.createElement("div");
+                cell.className = "cell";
+
+                // Add these two lines to fix the "spawn" location
+                const x = i % SIZE;
+                const y = Math.floor(i / SIZE);
+                cell.setAttribute('data-x', x);
+                cell.setAttribute('data-y', y);
+
+                cell.onclick = () => {
+                    if (!gameOver && board[y][x] === 0) {
+                        place(x, y, 1);
+                        if (!checkWin(x, y, 1, board)) think();
+                    }
+                };
+                boardEl.appendChild(cell);
+            }
+        }
+
+        function think() {
+            statusEl.innerText = "TITAN IS CALCULATING...";
+            let start = Date.now(), best = null, d = 1;
+
+
+
+            const runDepth = () => {
+                titan.onmessage = (e) => {
+                    if (e.data.x !== undefined) best = e.data;
+                    document.getElementById('depth-stat').innerText = `DEPTH: ${d}`;
+
+                    if (Date.now() - start < TIME_LIMIT && d < 6) {
+                        d++;
+
+                        const boardCopy = board.map(row => [...row]);
+                        titan.postMessage({ board: boardCopy, depth: d, startTime: start, limit: TIME_LIMIT });
+                    } else {
+                        finalizeMove(best);
+                    }
+                };
+                titan.postMessage({ board, depth: d, startTime: start, limit: TIME_LIMIT });
+            };
+            runDepth();
+        }
+
+        function finalizeMove(bestMove) {
+            if (!bestMove || gameOver) return;
+
+            // 1. Execute the move visually and logically
+            place(bestMove.x, bestMove.y, 2);
+
+            // 2. Check if this move ended the game
+            if (checkWin(bestMove.x, bestMove.y, 2, board)) {
+                gameOver = true;
+                statusEl.innerText = "SYSTEM HALTED: TITAN WINS";
+                statusEl.classList.add("status-win"); // Add a glitch/red effect
+                document.getElementById('thread-pool-stat').innerText = "THREAD_POOL: TERMINATED";
+            } else {
+                // 3. Otherwise, return control to the player
+                statusEl.innerText = "YOUR TURN.";
+            }
+        }
+
+        function place(x, y, player) {
+
+            board[y][x] = player;
+
+
+            const cell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+            if (!cell) return;
+            const piece = document.createElement('div');
+            piece.className = `stone piece ${player === 1 ? 'p1 white' : 'p2 red'}`;
+
+            // Force reflow for animation
+            void piece.offsetWidth;
+
+            cell.appendChild(piece);
+        }
+
+        function checkWin(x, y, p, board) {
+            const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+            for (let [dx, dy] of dirs) {
+                let c = 1;
+                for (let i = 1; i < 5; i++) {
+                    let nx = x + dx * i, ny = y + dy * i;
+                    if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === p) c++; else break;
+                }
+                for (let i = 1; i < 5; i++) {
+                    let nx = x - dx * i, ny = y - dy * i;
+                    if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE && board[ny][nx] === p) c++; else break;
+                }
+                if (c >= 5) {
+                    gameOver = true;
+                    statusEl.innerText = p === 1 ? "HUMAN ANOMALY DETECTED." : "TITAN DOMINANCE ESTABLISHED.";
+                    return true;
+                }
+            }
+            return false;
+        }
+    </script>
+</body>
+
+</html>
