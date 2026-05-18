@@ -1,0 +1,734 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Connect Four - V2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,457&display=swap"
+        rel="stylesheet">
+
+    <style>
+        
+        *{
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Google Sans Flex', sans-serif;
+        }
+        :root {
+            --bg-color: #0b0f19;
+            --glass-bg: rgba(255, 255, 255, 0.06);
+            --glass-blur: blur(16px);
+
+            --player-color: #ff3366;
+            --player-glow: rgba(255, 51, 102, 0.7);
+            --ai-color: #00f0ff;
+            --ai-glow: rgba(0, 240, 255, 0.7);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            /* Contains background orbs */
+        }
+
+        /* --- Animated Background Orbs --- */
+        .bg-orbs {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            background: #0b0f19;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: floatOrb 20s infinite alternate ease-in-out;
+            opacity: 0.6;
+        }
+
+        .orb-1 {
+            width: 45vw;
+            height: 45vw;
+            min-width: 300px;
+            min-height: 300px;
+            background: #4a00e0;
+            top: -10%;
+            left: -10%;
+        }
+
+        .orb-2 {
+            width: 50vw;
+            height: 50vw;
+            min-width: 350px;
+            min-height: 350px;
+            background: #8e2de2;
+            bottom: -20%;
+            right: -10%;
+            animation-delay: -5s;
+        }
+
+        .orb-3 {
+            width: 30vw;
+            height: 30vw;
+            min-width: 200px;
+            min-height: 200px;
+            background: #00f0ff;
+            top: 40%;
+            left: 60%;
+            animation-delay: -10s;
+        }
+
+        @keyframes floatOrb {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(-30px, 50px) scale(1.1);
+            }
+
+            100% {
+                transform: translate(50px, -30px) scale(0.9);
+            }
+        }
+
+        /* --- Typography --- */
+        h1 {
+            margin: 0 0 5px 0;
+            font-weight: 800;
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            letter-spacing: -0.05em;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            z-index: 10;
+        }
+
+        #status {
+            font-size: clamp(0.9rem, 3.5vw, 1.15rem);
+            margin-bottom: 20px;
+            height: 30px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        /* --- Responsive Game Layout --- */
+        .game-wrapper {
+            width: 94vw;
+            max-width: 550px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .controls-layer {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2%;
+            margin-bottom: 12px;
+        }
+
+        .drop-btn {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            aspect-ratio: 1;
+            /* Keeps buttons square on mobile */
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: clamp(1rem, 4vw, 1.5rem);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .drop-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .drop-btn:disabled {
+            opacity: 0.1;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* --- 3D Layered Board --- */
+        .board-stack {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 7 / 6;
+            /* Perfectly maintains grid ratio on all screens */
+        }
+
+        .grid-layer {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+        }
+
+        /* Layer 1: Dark cutouts */
+        .hole-bg {
+            background: #050810;
+            border-radius: 50%;
+            margin: 8%;
+            /* Creates the hole size */
+            box-shadow: inset 0 6px 15px rgba(0, 0, 0, 1), 0 1px 1px rgba(255, 255, 255, 0.05);
+        }
+
+        /* Layer 2: The falling pieces */
+        #pieces-layer {
+            z-index: 2;
+        }
+
+        .piece {
+            border-radius: 50%;
+            margin: 11%;
+            /* Slightly smaller than the hole to fit cleanly */
+            box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.5), inset 0 4px 8px rgba(255, 255, 255, 0.5);
+            /* Animation properties injected by JS */
+            animation: realisticDrop 0.7s forwards;
+        }
+
+        .piece.player {
+            background: radial-gradient(circle at 35% 35%, #ff88aa 0%, var(--player-color) 60%, #990033 100%);
+            box-shadow: 0 0 15px var(--player-glow), inset 0 -4px 8px rgba(0, 0, 0, 0.5), inset 0 4px 8px rgba(255, 255, 255, 0.5);
+        }
+
+        .piece.ai {
+            background: radial-gradient(circle at 35% 35%, #88ffff 0%, var(--ai-color) 60%, #0088cc 100%);
+            box-shadow: 0 0 15px var(--ai-glow), inset 0 -4px 8px rgba(0, 0, 0, 0.5), inset 0 4px 8px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Layer 3: The Front Frosted Glass Mask */
+        #front-layer {
+            z-index: 5;
+            pointer-events: none;
+            /* Click right through to the buttons */
+        }
+
+        .front-cell {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            /* The magic: punches a perfectly clear hole in the blur to reveal pieces */
+            -webkit-mask-image: radial-gradient(closest-side at center, transparent 82%, black 83%);
+            mask-image: radial-gradient(closest-side at center, transparent 82%, black 83%);
+        }
+
+        /* Round the outer corners of the glass */
+        .front-cell.tl {
+            border-top-left-radius: 20px;
+        }
+
+        .front-cell.tr {
+            border-top-right-radius: 20px;
+        }
+
+        .front-cell.bl {
+            border-bottom-left-radius: 20px;
+        }
+
+        .front-cell.br {
+            border-bottom-right-radius: 20px;
+        }
+
+        /* The Outer Glossy Rim Container */
+        .board-rim {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            pointer-events: none;
+            z-index: 10;
+            box-shadow:
+                inset 0 2px 0 rgba(255, 255, 255, 0.4),
+                inset 0 -10px 20px rgba(0, 0, 0, 0.5),
+                0 20px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        /* --- Authentic Physics Bouncing Keyframes --- */
+        @keyframes realisticDrop {
+            0% {
+                transform: translateY(var(--start-y));
+                animation-timing-function: ease-in;
+                /* Gravity pull */
+            }
+
+            50% {
+                transform: translateY(0);
+                /* Hit Bottom */
+                animation-timing-function: ease-out;
+                /* Kinetic rebound */
+            }
+
+            68% {
+                transform: translateY(-28%);
+                /* Bounce Up (relative to piece size) */
+                animation-timing-function: ease-in;
+                /* Gravity pull */
+            }
+
+            82% {
+                transform: translateY(0);
+                /* Hit Bottom */
+                animation-timing-function: ease-out;
+                /* Kinetic rebound */
+            }
+
+            92% {
+                transform: translateY(-8%);
+                /* Micro Bounce */
+                animation-timing-function: ease-in;
+                /* Gravity pull */
+            }
+
+            100% {
+                transform: translateY(0);
+                /* Settle */
+            }
+        }
+
+        button.reset {
+            margin-top: 30px;
+            padding: 14px 32px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        button.reset:active {
+            transform: translateY(2px);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background Layer -->
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <h1 style="font-weight: 800;">CONNECT FOUR</h1>
+    <div id="status">Your turn！</div>
+
+    <div class="game-wrapper">
+        <div class="controls-layer" id="input-row">
+            <!-- Buttons injected by JS -->
+        </div>
+
+        <div class="board-stack">
+            <!-- Layer 1: Dark depth cutouts -->
+            <div id="back-layer" class="grid-layer"></div>
+
+            <!-- Layer 2: Moving pieces -->
+            <div id="pieces-layer" class="grid-layer"></div>
+
+            <!-- Layer 3: Frosted glass mask -->
+            <div id="front-layer" class="grid-layer"></div>
+
+            <!-- Outermost Glass Rim Highlight -->
+            <div class="board-rim"></div>
+        </div>
+    </div>
+
+    <button class="reset" onclick="resetGame()">RESTART MATCH</button>
+
+    <script>
+        const ROWS = 6;
+        const COLS = 7;
+        const PLAYER = 1;
+        const AI = 2;
+        const EMPTY = 0;
+        const MAX_DEPTH = 7;
+
+        let board = [];
+        let gameOver = false;
+        let isAiThinking = false;
+
+        // --- Haptics System ---
+        function triggerVibration(pattern) {
+            // Fails gracefully on iOS Safari which doesn't support the API
+            if (navigator.vibrate) {
+                try { navigator.vibrate(pattern); } catch (e) { }
+            }
+        }
+
+        const evaluationTable = [
+            [3, 4, 5, 7, 5, 4, 3],
+            [4, 6, 8, 10, 8, 6, 4],
+            [5, 8, 11, 13, 11, 8, 5],
+            [5, 8, 11, 13, 11, 8, 5],
+            [4, 6, 8, 10, 8, 6, 4],
+            [3, 4, 5, 7, 5, 4, 3]
+        ];
+
+        function buildDOM() {
+            const controls = document.getElementById('input-row');
+            const backLayer = document.getElementById('back-layer');
+            const frontLayer = document.getElementById('front-layer');
+            const piecesLayer = document.getElementById('pieces-layer');
+
+            controls.innerHTML = '';
+            backLayer.innerHTML = '';
+            frontLayer.innerHTML = '';
+            piecesLayer.innerHTML = ''; // Clear pieces
+
+            // Build Controls
+            for (let c = 0; c < COLS; c++) {
+                const btn = document.createElement('button');
+                btn.className = 'drop-btn';
+                btn.innerText = '↓';
+                btn.onclick = () => playerMove(c);
+                controls.appendChild(btn);
+            }
+
+            // Build Grid Cells
+            for (let r = 0; r < ROWS; r++) {
+                board.push(new Array(COLS).fill(EMPTY));
+                for (let c = 0; c < COLS; c++) {
+                    // Back layer hole
+                    const backHole = document.createElement('div');
+                    backHole.className = 'hole-bg';
+                    backLayer.appendChild(backHole);
+
+                    // Front layer glass mask
+                    const frontCell = document.createElement('div');
+                    frontCell.className = 'front-cell';
+                    // Tag corners to round the outer container safely
+                    if (r === 0 && c === 0) frontCell.classList.add('tl');
+                    if (r === 0 && c === COLS - 1) frontCell.classList.add('tr');
+                    if (r === ROWS - 1 && c === 0) frontCell.classList.add('bl');
+                    if (r === ROWS - 1 && c === COLS - 1) frontCell.classList.add('br');
+                    frontLayer.appendChild(frontCell);
+                }
+            }
+        }
+
+        function initBoard() {
+            board = [];
+            gameOver = false;
+            isAiThinking = false;
+
+            buildDOM();
+
+            document.getElementById('status').innerText = "YOUR TURN! SELECT A COLUMN.";
+            document.getElementById('status').style.color = '#f8fafc';
+            toggleButtons(true);
+        }
+
+        function toggleButtons(enable) {
+            const buttons = document.querySelectorAll('.drop-btn');
+            buttons.forEach((btn, col) => {
+                if (!enable || board[0][col] !== EMPTY || gameOver) {
+                    btn.disabled = true;
+                } else {
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        function getNextOpenRow(b, col) {
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (b[r][col] === EMPTY) return r;
+            }
+            return -1;
+        }
+
+        function playerMove(col) {
+            if (gameOver || isAiThinking) return;
+
+            // Light click vibration
+            triggerVibration(10);
+
+            const row = getNextOpenRow(board, col);
+            if (row !== -1) {
+                makeMove(row, col, PLAYER);
+
+                if (checkWin(board, PLAYER)) {
+                    document.getElementById('status').innerText = "Wait... You won?!";
+                    gameOver = true;
+                    toggleButtons(false);
+                    return;
+                }
+
+                if (board.every(row => row.every(cell => cell !== EMPTY))) {
+                    document.getElementById('status').innerText = "IT'S A DRAW!";
+                    gameOver = true;
+                    toggleButtons(false);
+                    return;
+                }
+
+                isAiThinking = true;
+                document.getElementById('status').innerText = "AI IS CALCULATING...";
+                document.getElementById('status').style.color = 'var(--ai-color)';
+                toggleButtons(false);
+
+                // Wait for the drop animation to finish fully settling
+                setTimeout(() => {
+                    aiMove();
+                }, 750);
+            }
+        }
+
+        function aiMove() {
+            if (gameOver) return;
+
+            let bestMove = findBestMove();
+            let row = getNextOpenRow(board, bestMove);
+
+            if (row !== -1) {
+                makeMove(row, bestMove, AI);
+
+                if (checkWin(board, AI)) {
+                    document.getElementById('status').innerText = "AI WINS! ";
+                    document.getElementById('status').style.color = 'var(--ai-color)';
+                    gameOver = true;
+                    toggleButtons(false);
+
+                    // Heavy defeat vibration
+                    setTimeout(() => triggerVibration([100, 50, 200, 50, 400]), 750);
+                    return;
+                }
+
+                if (board.every(row => row.every(cell => cell !== EMPTY))) {
+                    document.getElementById('status').innerText = "IT'S A DRAW!";
+                    gameOver = true;
+                    return;
+                }
+
+                isAiThinking = false;
+               
+                setTimeout(() => {
+                    document.getElementById('status').innerText = "YOUR TURN! SELECT A COLUMN.";
+                    document.getElementById('status').style.color = '#f8fafc';
+                    toggleButtons(true);
+                }, 750);
+            }
+        }
+
+        function makeMove(row, col, player) {
+            board[row][col] = player;
+            const piecesLayer = document.getElementById('pieces-layer');
+            const piece = document.createElement('div');
+            piece.className = `piece ${player === PLAYER ? 'player' : 'ai'}`;
+
+            // Set its natural grid position directly!
+            piece.style.gridRow = row + 1;
+            piece.style.gridColumn = col + 1;
+
+            // Calculate starting height purely based on rows above it so it always drops from the top
+            // -100% means 1 full cell height upwards. We push it safely above the entire board wrapper.
+            const distanceOffScreen = `calc( -100% * ${row + 1} - 120px )`;
+            piece.style.setProperty('--start-y', distanceOffScreen);
+
+            piecesLayer.appendChild(piece);
+
+            // Sync vibration haptics exactly to the physics animation bounces (0.7s total)
+            setTimeout(() => triggerVibration(30), 700 * 0.50); // First heavy hit (50% mark)
+            setTimeout(() => triggerVibration(15), 700 * 0.82); // Second smaller hit (82% mark)
+        }
+
+        // --- AI ALGORITHM BLOCK ---
+        function evaluateWindow(window, player) {
+            let score = 0;
+            const opponent = (player === AI) ? PLAYER : AI;
+            const playerCount = window.filter(c => c === player).length;
+            const emptyCount = window.filter(c => c === EMPTY).length;
+            const oppCount = window.filter(c => c === opponent).length;
+
+            if (playerCount === 4) score += 100000;
+            else if (playerCount === 3 && emptyCount === 1) score += 50;
+            else if (playerCount === 2 && emptyCount === 2) score += 10;
+
+            if (oppCount === 3 && emptyCount === 1) score -= 80;
+            return score;
+        }
+
+        function scoreBoard(b, player) {
+            let score = 0;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (b[r][c] === AI) score += evaluationTable[r][c];
+                    else if (b[r][c] === PLAYER) score -= evaluationTable[r][c];
+                }
+            }
+            // Horizons
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    let window = [b[r][c], b[r][c + 1], b[r][c + 2], b[r][c + 3]];
+                    score += evaluateWindow(window, player);
+                }
+            }
+            // Verticals
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS - 3; r++) {
+                    let window = [b[r][c], b[r + 1][c], b[r + 2][c], b[r + 3][c]];
+                    score += evaluateWindow(window, player);
+                }
+            }
+            // Positive Diagonals
+            for (let r = 0; r < ROWS - 3; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    let window = [b[r][c], b[r + 1][c + 1], b[r + 2][c + 2], b[r + 3][c + 3]];
+                    score += evaluateWindow(window, player);
+                }
+            }
+            // Negative Diagonals
+            for (let r = 3; r < ROWS; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    let window = [b[r][c], b[r - 1][c + 1], b[r - 2][c + 2], b[r - 3][c + 3]];
+                    score += evaluateWindow(window, player);
+                }
+            }
+            return score;
+        }
+
+        function checkWin(b, player) {
+            for (let c = 0; c < COLS - 3; c++) {
+                for (let r = 0; r < ROWS; r++) {
+                    if (b[r][c] === player && b[r][c + 1] === player && b[r][c + 2] === player && b[r][c + 3] === player) return true;
+                }
+            }
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS - 3; r++) {
+                    if (b[r][c] === player && b[r + 1][c] === player && b[r + 2][c] === player && b[r + 3][c] === player) return true;
+                }
+            }
+            for (let c = 0; c < COLS - 3; c++) {
+                for (let r = 0; r < ROWS - 3; r++) {
+                    if (b[r][c] === player && b[r + 1][c + 1] === player && b[r + 2][c + 2] === player && b[r + 3][c + 3] === player) return true;
+                }
+            }
+            for (let c = 0; c < COLS - 3; c++) {
+                for (let r = 3; r < ROWS; r++) {
+                    if (b[r][c] === player && b[r - 1][c + 1] === player && b[r - 2][c + 2] === player && b[r - 3][c + 3] === player) return true;
+                }
+            }
+            return false;
+        }
+
+        const columnOrder = [3, 2, 4, 1, 5, 0, 6];
+
+        function minimax(b, depth, alpha, beta, maximizingPlayer) {
+            const isTerminal = checkWin(b, AI) || checkWin(b, PLAYER) || b.every(row => row.every(cell => cell !== EMPTY));
+
+            if (depth === 0 || isTerminal) {
+                if (isTerminal) {
+                    if (checkWin(b, AI)) return 10000000 + depth;
+                    if (checkWin(b, PLAYER)) return -10000000 - depth;
+                    return 0;
+                }
+                return scoreBoard(b, AI);
+            }
+
+            if (maximizingPlayer) {
+                let value = -Infinity;
+                for (let col of columnOrder) {
+                    let row = getNextOpenRow(b, col);
+                    if (row !== -1) {
+                        b[row][col] = AI;
+                        value = Math.max(value, minimax(b, depth - 1, alpha, beta, false));
+                        b[row][col] = EMPTY;
+                        alpha = Math.max(alpha, value);
+                        if (alpha >= beta) break;
+                    }
+                }
+                return value;
+            } else {
+                let value = Infinity;
+                for (let col of columnOrder) {
+                    let row = getNextOpenRow(b, col);
+                    if (row !== -1) {
+                        b[row][col] = PLAYER;
+                        value = Math.min(value, minimax(b, depth - 1, alpha, beta, true));
+                        b[row][col] = EMPTY;
+                        beta = Math.min(beta, value);
+                        if (alpha >= beta) break;
+                    }
+                }
+                return value;
+            }
+        }
+
+        function findBestMove() {
+            let bestScore = -Infinity;
+            let bestMove = columnOrder[0];
+
+            for (let col of columnOrder) {
+                let row = getNextOpenRow(board, col);
+                if (row !== -1) {
+                    board[row][col] = AI;
+                    if (checkWin(board, AI)) { board[row][col] = EMPTY; return col; }
+                    board[row][col] = EMPTY;
+
+                    board[row][col] = PLAYER;
+                    if (checkWin(board, PLAYER)) { board[row][col] = EMPTY; return col; }
+                    board[row][col] = EMPTY;
+                }
+            }
+
+            for (let col of columnOrder) {
+                let row = getNextOpenRow(board, col);
+                if (row !== -1) {
+                    board[row][col] = AI;
+                    let score = minimax(board, MAX_DEPTH, -Infinity, Infinity, false);
+                    board[row][col] = EMPTY;
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = col;
+                    }
+                }
+            }
+            return bestMove;
+        }
+
+        function resetGame() {
+            triggerVibration([20, 50, 20]);
+            initBoard();
+        }
+
+        // Initialize on load
+        initBoard();
+    </script>
+</body>
+
+</html>
