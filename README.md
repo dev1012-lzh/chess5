@@ -3,3 +3,5 @@ A strategic, web-based implementation of the classic Five-in-a-Row game. Built w
 Vibe coded. However mainly human. =)
 Note that, this is a prototype only.
 
+Live now on Github Pages
+
