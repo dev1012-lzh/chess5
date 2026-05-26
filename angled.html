@@ -1,0 +1,712 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Angle - Mobile Matrix</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300..800&family=Product+Sans:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --card-color: #1a2333;
+            --accent-color: #38bdf8;
+            --target-color: #4ade80;
+            --guess-color: #f43f5e;
+            --text-color: #ffffff;
+            --font-family: 'Product Sans', 'Open Sans', system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+            /* Prevent accidental text highlight selections on touch dragging screens */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #090d16, #1e152a);
+            background-size: 400% 400%;
+            animation: gradientBG 12s ease infinite;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            /* Adaptive mobile viewport sizing fixing mobile Safari address bars issues */
+            min-height: -webkit-fill-available;
+            padding: 12px;
+            overflow: hidden;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .game-container {
+            background-color: var(--card-color);
+            padding: 1.5rem 1.2rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            position: relative;
+            backdrop-filter: blur(8px);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1.2rem;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            background: rgba(0,0,0,0.2);
+            padding: 0.4rem 0.8rem;
+            border-radius: 50px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 2px;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            padding: 0.3rem 0.7rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn.active {
+            background: var(--accent-color);
+            color: #0f172a;
+        }
+
+        .round-tracker {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #94a3b8;
+        }
+
+        .target-box {
+            background: rgba(56, 189, 248, 0.05);
+            border: 1px solid rgba(56, 189, 248, 0.15);
+            padding: 0.8rem;
+            border-radius: 14px;
+            margin-bottom: 1.2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .target-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            margin-bottom: 0.1rem;
+        }
+
+        .target-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        .flash-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--card-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .flash-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .peek-btn {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 0.3rem;
+        }
+
+        /* Scaled Dial Area perfectly fit for small screens */
+        .dial-area {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 0 auto 1.5rem auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dial-circle-bg {
+            position: absolute;
+            width: 190px;
+            height: 190px;
+            border: 2px dashed rgba(100, 116, 139, 0.2);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .horizontal-baseline {
+            position: absolute;
+            width: 210px;
+            height: 1px;
+            background-color: rgba(100, 116, 139, 0.3);
+            pointer-events: none;
+        }
+
+        .center-dot {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background-color: #94a3b8;
+            border-radius: 50%;
+            z-index: 10;
+            box-shadow: 0 0 0 4px var(--card-color);
+        }
+
+        .needle {
+            position: absolute;
+            width: 95px; /* Scaled down for mobile diameter metrics bounds */
+            height: 4px;
+            background-color: var(--guess-color);
+            transform-origin: left center; 
+            left: 50%;
+            top: calc(50% - 2px);
+            border-radius: 0 4px 4px 0;
+            z-index: 5;
+            transform: rotate(270deg);
+            transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .target-needle {
+            position: absolute;
+            width: 95px;
+            height: 4px;
+            background-color: var(--target-color);
+            transform-origin: left center;
+            left: 50%;
+            top: calc(50% - 2px);
+            border-radius: 0 4px 4px 0;
+            z-index: 4;
+            opacity: 0;
+            transform: rotate(180deg);
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .target-needle.reveal {
+            opacity: 1;
+        }
+
+        /* Large Touch Target Slider Area */
+        .slider-container {
+            padding: 10px 5px;
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 10px; /* Thicker horizontal trace track for easy thumb visibility on mobile screens */
+            background: #2a3649;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 28px; /* Enlarged touch diameter sizes matching mobile UI paradigms standards */
+            height: 28px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+        }
+
+        .btn {
+            background-color: #2e3c52;
+            color: var(--text-color);
+            border: none;
+            padding: 0.9rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            width: 100%;
+            letter-spacing: 0.5px;
+        }
+
+        .results {
+            margin-top: 0;
+            height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .results.show {
+            height: 140px; 
+            opacity: 1;
+            margin-top: 1.5rem;
+        }
+
+        .score-display {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+            animation: scorePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes scorePop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .breakdown {
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .funny-quote {
+            font-size: 0.85rem;
+            font-style: italic;
+            color: #94a3b8;
+            padding: 0.4rem 0.8rem;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            display: inline-block;
+            max-width: 100%;
+            line-height: 1.4;
+        }
+
+        .summary-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #111827;
+            border-radius: 24px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .summary-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .final-score-title {
+            font-size: 1rem;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .final-score-big {
+            font-size: 3.8rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 25px rgba(56, 189, 248, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="summary-overlay" id="summary-screen">
+            <div class="final-score-title">Final Performance Matrix</div>
+            <div class="final-score-big" id="grand-score">000</div>
+            <div id="final-verdict" style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem; padding: 0 1rem; font-style: italic;"></div>
+            <button class="btn" id="restart-btn" style="background: var(--accent-color); color: #0f172a;">PLAY AGAIN</button>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <h1>ANGLED</h1>
+        </div>
+        <div class="subtitle">Angle Evaluation Matrix</div>
+
+        <div class="game-header">
+            <div class="mode-selector">
+                <button class="mode-btn active" id="mode-easy">EASY</button>
+                <button class="mode-btn" id="mode-hard">HARD</button>
+            </div>
+            <div class="round-tracker" id="round-text">ROUND 1/5</div>
+        </div>
+
+        <div class="target-box">
+            <div class="target-label">Target Angle</div>
+            <div class="target-value" id="target-display">--°</div>
+            
+            <div class="flash-overlay" id="hard-mask">
+                <div style="font-size: 0.8rem; color: #64748b; font-weight:700;">ANGLE HIDDEN</div>
+                <button class="peek-btn" id="peek-btn">PEEK (1s)</button>
+            </div>
+        </div>
+
+        <div class="dial-area">
+            <div class="dial-circle-bg"></div>
+            <div class="horizontal-baseline"></div>
+            <div class="target-needle" id="target-needle"></div>
+            <div class="needle" id="guess-needle"></div>
+            <div class="center-dot"></div>
+        </div>
+
+        <div class="slider-container">
+            <input type="range" id="angle-slider" min="0" max="180" value="90">
+        </div>
+        
+        <button class="btn" id="action-btn">SUBMIT GUESS</button>
+
+        <div class="results" id="results-panel">
+            <div class="score-display" id="score-text">Score: 0</div>
+            <div class="breakdown">
+                Your guess: <span style="color: var(--guess-color)" id="span-guess">0°</span> | 
+                Target: <span style="color: var(--target-color)" id="span-target">0°</span>
+            </div>
+            <div class="funny-quote" id="quote-text">"Not bad, but a protractor is crying somewhere."</div>
+        </div>
+    </div>
+
+    <script>
+        // Core Config
+        let isHardMode = false;
+        let currentRound = 1;
+        const totalRounds = 5;
+        let runningScoreTotal = 0;
+        
+        let targetAngle = 0;
+        let currentGuess = 90;
+        let lastVibratedAngle = 90; // Cache to pace haptic steps
+        let isEvaluated = false;
+        let maskTimeout = null;
+
+        // Master Static Database
+        const masterQuotes = {
+            perfect: [
+                "Absolute aimbot behavior. Turn your hacks off.",
+                "Did you use a physical protractor on your screen? Sus.",
+                "Okay, pixel-perfect. Save some talent for the rest of us.",
+                "Are you secretly a math textbook author?"
+            ],
+            excellent: [
+                "Your internal geometric clock is ticking flawlessly.",
+                "Solid. Your math teacher would actually be proud.",
+                "Very clean guess. Human radar confirmed.",
+                "You can see the matrix, can't you?",
+                "Slick tracking. Practically flawless look."
+            ],
+            average: [
+                "Not terrible, but a protractor is weeping softly somewhere.",
+                "You survived. Barely. Let's aim a bit closer next time.",
+                "Close enough for a rough sketch, bad enough for engineering.",
+                "The line went one way, your soul went another.",
+                "Almost hit the vector. Almost."
+            ],
+            bad: [
+                "Are you holding your monitor upside down?",
+                "Parallel lines have so much in common. Too bad yours wasn't one of them.",
+                "A blindfolded pigeon could have guessed closer.",
+                "Geometry class called, they want their tuition fees back.",
+                "Your processing matrix is slightly misaligned today."
+            ],
+            terrible: [
+                "Wow. That wasn't just off, that was a spatial disaster.",
+                "0/100 is almost impressive if it wasn't tragic.",
+                "Please never build a house. Or line up a poster.",
+                "Is your mouse running at a 2Hz polling rate or something?",
+                "An absolute alignment catastrophe."
+            ]
+        };
+
+        let workingQuotesPool = {};
+
+        function resetQuotesPool() {
+            workingQuotesPool = {
+                perfect: [...masterQuotes.perfect],
+                excellent: [...masterQuotes.excellent],
+                average: [...masterQuotes.average],
+                bad: [...masterQuotes.bad],
+                terrible: [...masterQuotes.terrible]
+            };
+        }
+
+        // Haptic Trigger Helper Function
+        function triggerHaptic(duration) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(duration);
+            }
+        }
+
+        // DOM Elements
+        const targetDisplay = document.getElementById('target-display');
+        const guessNeedle = document.getElementById('guess-needle');
+        const targetNeedle = document.getElementById('target-needle');
+        const slider = document.getElementById('angle-slider');
+        const actionBtn = document.getElementById('action-btn');
+        const resultsPanel = document.getElementById('results-panel');
+        const scoreText = document.getElementById('score-text');
+        const spanGuess = document.getElementById('span-guess');
+        const spanTarget = document.getElementById('span-target');
+        const quoteText = document.getElementById('quote-text');
+        const roundText = document.getElementById('round-text');
+        const hardMask = document.getElementById('hard-mask');
+        const peekBtn = document.getElementById('peek-btn');
+        const btnEasy = document.getElementById('mode-easy');
+        const btnHard = document.getElementById('mode-hard');
+        const summaryScreen = document.getElementById('summary-screen');
+        const grandScoreDisplay = document.getElementById('grand-score');
+        const finalVerdict = document.getElementById('final-verdict');
+        const restartBtn = document.getElementById('restart-btn');
+
+        // Mode Toggles Setup
+        btnEasy.addEventListener('click', () => { triggerHaptic(10); toggleMode(false); });
+        btnHard.addEventListener('click', () => { triggerHaptic(10); toggleMode(true); });
+        
+        function toggleMode(hardSetting) {
+            if (currentRound > 1 || isEvaluated) return; 
+            isHardMode = hardSetting;
+            btnEasy.classList.toggle('active', !isHardMode);
+            btnHard.classList.toggle('active', isHardMode);
+            resetRoundVisuals();
+        }
+
+        function generateTargetAngle() {
+            let potentialAngle;
+            do {
+                potentialAngle = Math.floor(Math.random() * 171) + 5;
+            } while (
+                potentialAngle === 90 || 
+                Math.abs(potentialAngle - 0) < 8 || 
+                Math.abs(potentialAngle - 90) < 8 || 
+                Math.abs(potentialAngle - 180) < 8
+            );
+            return potentialAngle;
+        }
+
+        function initRound() {
+            isEvaluated = false;
+            targetAngle = generateTargetAngle();
+            targetDisplay.textContent = `${targetAngle}°`;
+            
+            slider.value = 90;
+            slider.disabled = false;
+            currentGuess = 90;
+            lastVibratedAngle = 90;
+            
+            updateNeedle(guessNeedle, currentGuess);
+            targetNeedle.classList.remove('reveal');
+            resultsPanel.classList.remove('show');
+            
+            roundText.textContent = `ROUND ${currentRound}/${totalRounds}`;
+            actionBtn.textContent = "SUBMIT GUESS";
+
+            resetRoundVisuals();
+        }
+
+        function resetRoundVisuals() {
+            clearTimeout(maskTimeout);
+            if (isHardMode) {
+                hardMask.classList.remove('active');
+                targetDisplay.style.opacity = "1";
+                maskTimeout = setTimeout(() => {
+                    if(!isEvaluated) hardMask.classList.add('active');
+                }, 1500);
+            } else {
+                hardMask.classList.remove('active');
+                targetDisplay.style.opacity = "1";
+            }
+        }
+
+        peekBtn.addEventListener('click', () => {
+            triggerHaptic(15);
+            hardMask.classList.remove('active');
+            setTimeout(() => {
+                if(!isEvaluated && isHardMode) hardMask.classList.add('active');
+            }, 1000);
+        });
+
+        function updateNeedle(needleElement, angle) {
+            const cssRotation = 180 + angle; 
+            needleElement.style.transform = `rotate(${cssRotation}deg)`;
+        }
+
+        // Live Slider Haptic Tracker Engine
+        slider.addEventListener('input', (e) => {
+            if (isEvaluated) return;
+            currentGuess = parseInt(e.target.value);
+            updateNeedle(guessNeedle, currentGuess);
+
+            // Tick a light vibration every 5 degrees of travel to mimic physical gears
+            if (Math.abs(currentGuess - lastVibratedAngle) >= 5) {
+                triggerHaptic(7); // Short 7ms mechanical notch tap
+                lastVibratedAngle = currentGuess;
+            }
+        });
+
+        actionBtn.addEventListener('click', () => {
+            if (!isEvaluated) {
+                evaluateCurrentGuess();
+            } else {
+                triggerHaptic(15);
+                advanceMatrixStep();
+            }
+        });
+
+        function getUniqueQuote(score) {
+            let category;
+            if (score === 100) category = 'perfect';
+            else if (score >= 90) category = 'excellent';
+            else if (score >= 65) category = 'average';
+            else if (score >= 35) category = 'bad';
+            else category = 'terrible';
+
+            if (workingQuotesPool[category].length === 0) {
+                workingQuotesPool[category] = [...masterQuotes[category]];
+            }
+
+            const randomIndex = Math.floor(Math.random() * workingQuotesPool[category].length);
+            return workingQuotesPool[category].splice(randomIndex, 1)[0];
+        }
+
+        function evaluateCurrentGuess() {
+            isEvaluated = true;
+            slider.disabled = true;
+            clearTimeout(maskTimeout);
+            hardMask.classList.remove('active');
+
+            updateNeedle(targetNeedle, targetAngle);
+            targetNeedle.classList.add('reveal');
+
+            const absoluteError = Math.abs(targetAngle - currentGuess);
+            const roundScore = Math.max(0, 100 - (absoluteError * 2));
+            runningScoreTotal += roundScore;
+
+            // Distinct Result Based Haptic Feedback Patterns
+            if (roundScore === 100) {
+                // Perfect Double-Pulse celebration explosion
+                triggerHaptic([35, 50, 35]); 
+            } else if (roundScore >= 90) {
+                // Strong single click success confirm
+                triggerHaptic(40); 
+            } else if (roundScore >= 65) {
+                // Light standard confirmation click
+                triggerHaptic(20); 
+            } else {
+                // Long warning bump for bad deviations
+                triggerHaptic(70); 
+            }
+
+            scoreText.textContent = `Score: +${roundScore}`;
+            spanGuess.textContent = `${currentGuess}°`;
+            spanTarget.textContent = `${targetAngle}°`;
+            quoteText.textContent = `"${getUniqueQuote(roundScore)}"`;
+
+            if (roundScore >= 90) scoreText.style.color = 'var(--target-color)';
+            else if (roundScore >= 65) scoreText.style.color = 'var(--accent-color)';
+            else scoreText.style.color = 'var(--guess-color)';
+
+            resultsPanel.classList.add('show');
+            
+            if (currentRound === totalRounds) {
+                actionBtn.textContent = "VIEW FINAL EVALUATION";
+            } else {
+                actionBtn.textContent = "CONTINUE MATRIX";
+            }
+        }
+
+        function advanceMatrixStep() {
+            if (currentRound < totalRounds) {
+                currentRound++;
+                initRound();
+            } else {
+                const maxPossible = totalRounds * 100;
+                grandScoreDisplay.textContent = `${runningScoreTotal}/${maxPossible}`;
+                
+                let verdict;
+                if (runningScoreTotal >= 450) verdict = "A true geometric sniper. Absolute elite precision.";
+                else if (runningScoreTotal >= 350) verdict = "Not bad, you've definitely got steady eyes.";
+                else if (runningScoreTotal >= 200) verdict = "Mildly askew. You might need to recalibrate your senses.";
+                else verdict = "A total alignment catastrophe. Put down the dial.";
+                
+                finalVerdict.textContent = verdict;
+                summaryScreen.classList.add('active');
+                // Grand wrap-up finale vibration pattern
+                triggerHaptic([50, 60, 50, 60, 80]);
+            }
+        }
+
+        restartBtn.addEventListener('click', () => {
+            triggerHaptic([20, 40, 20]);
+            currentRound = 1;
+            runningScoreTotal = 0;
+            summaryScreen.classList.remove('active');
+            resetQuotesPool();
+            initRound();
+        });
+
+        resetQuotesPool();
+        initRound();
+    </script>
+</body>
+</html>
