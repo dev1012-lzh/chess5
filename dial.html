@@ -1,0 +1,507 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DIAL - Working Memory Matrix</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300..800&family=Product+Sans:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --card-color: #171d1c;
+            --accent-color: #10b981;
+            --fail-color: #ef4444;
+            --dial-btn-bg: #222a29;
+            --text-color: #ffffff;
+            --font-family: 'Product Sans', 'Open Sans', system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(-45deg, #070b0a, #0d1413, #13221f, #090e0d);
+            background-size: 400% 400%;
+            animation: gradientBG 12s ease infinite;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            padding: 12px;
+            overflow: hidden;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .game-container {
+            background-color: var(--card-color);
+            padding: 1.5rem 1.4rem;
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            position: relative;
+            backdrop-filter: blur(8px);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, #ffffff, var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #4b5e5c;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1.2rem;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            background: rgba(0,0,0,0.3);
+            padding: 0.4rem 0.8rem;
+            border-radius: 50px;
+        }
+
+        .status-badge {
+            background: var(--accent-color);
+            color: #070b0a;
+            padding: 0.3rem 0.7rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.inputting {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .round-tracker {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #617b78;
+        }
+
+        .display-terminal {
+            background: #090d0c;
+            border-radius: 16px;
+            padding: 1.2rem 0.8rem;
+            border: 1px solid rgba(16, 185, 129, 0.1);
+            margin-bottom: 1.5rem;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
+        }
+
+        .numbers-output {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 2.1rem;
+            letter-spacing: 3px;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+            transition: color 0.1s ease;
+        }
+
+        .numbers-output.error {
+            color: var(--fail-color);
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        .terminal-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #3d4f4d;
+            letter-spacing: 1.5px;
+            margin-top: 0.4rem;
+            font-weight: 700;
+        }
+
+        .dialer-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.8rem;
+            margin-bottom: 0.5rem;
+            padding: 0 0.5rem;
+        }
+
+        .dial-btn {
+            background-color: var(--dial-btn-bg);
+            border: 1px solid rgba(255,255,255,0.01);
+            border-radius: 16px;
+            aspect-ratio: 1.3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            color: #e2e8f0;
+        }
+
+        .dial-btn:active, .dial-btn.active-tap {
+            background-color: #2c3836;
+            transform: scale(0.95);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .dial-btn .num {
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .dial-btn .letters {
+            font-size: 0.6rem;
+            color: #4b5e5c;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        .dial-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .results {
+            margin-top: 0;
+            height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .results.show {
+            height: 110px; 
+            opacity: 1;
+            margin-top: 1.2rem;
+        }
+
+        .funny-quote {
+            font-size: 0.82rem;
+            font-style: italic;
+            color: #8fa09e;
+            padding: 0.5rem 0.8rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            display: inline-block;
+            max-width: 100%;
+            line-height: 1.4;
+        }
+
+        .summary-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0b0f0e;
+            border-radius: 28px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .summary-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .final-score-title {
+            font-size: 1rem;
+            text-transform: uppercase;
+            color: #4b5e5c;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .final-score-big {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: #070b0a;
+            border: none;
+            padding: 0.9rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            width: 100%;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="summary-overlay" id="summary-screen">
+            <div class="final-score-title">Working Memory Accuracy</div>
+            <div class="final-score-big" id="grand-score">0/3</div>
+            <div id="final-verdict" style="color: #617b78; font-size: 0.9rem; margin-bottom: 2rem; padding: 0 1rem; font-style: italic;"></div>
+            <button class="btn" id="restart-btn">BOOT NEW TRUNK LINE</button>
+        </div>
+
+        <h1>DIAL</h1>
+        <div class="subtitle">Phonological Buffer Test</div>
+
+        <div class="game-header">
+            <div class="status-badge" id="status-badge">MEMORIZE</div>
+            <div class="round-tracker" id="round-text">ROUND 1/3</div>
+        </div>
+
+        <div class="display-terminal" id="terminal">
+            <div class="numbers-output" id="output-field">--------</div>
+            <div class="terminal-label" id="terminal-label">INCOMING TRUNK LINE</div>
+        </div>
+        
+        <div class="dialer-grid" id="dialer-grid">
+            <button class="dial-btn" data-val="1"><span class="num">1</span><span class="letters">. , _</span></button>
+            <button class="dial-btn" data-val="2"><span class="num">2</span><span class="letters">A B C</span></button>
+            <button class="dial-btn" data-val="3"><span class="num">3</span><span class="letters">D E F</span></button>
+            <button class="dial-btn" data-val="4"><span class="num">4</span><span class="letters">G H I</span></button>
+            <button class="dial-btn" data-val="5"><span class="num">5</span><span class="letters">J K L</span></button>
+            <button class="dial-btn" data-val="6"><span class="num">6</span><span class="letters">M N O</span></button>
+            <button class="dial-btn" data-val="7"><span class="num">7</span><span class="letters">P Q R S</span></button>
+            <button class="dial-btn" data-val="8"><span class="num">8</span><span class="letters">T U V</span></button>
+            <button class="dial-btn" data-val="9"><span class="num">9</span><span class="letters">W X Y Z</span></button>
+            <button class="dial-btn" data-val="*" disabled><span class="num">*</span><span class="letters">SYS</span></button>
+            <button class="dial-btn" data-val="0"><span class="num">0</span><span class="letters">+</span></button>
+            <button class="dial-btn" data-val="#" disabled><span class="num">#</span><span class="letters">CALL</span></button>
+        </div>
+
+        <div class="results" id="results-panel">
+            <div class="funny-quote" id="quote-text">"Line connecting..."</div>
+        </div>
+    </div>
+
+    <script>
+        let currentRound = 1;
+        const totalRounds = 3;
+        let successfulConnections = 0;
+        
+        let generatedTargetString = "";
+        let userConstructedString = "";
+        let memorizeTimeout = null;
+        let interactionState = false;
+
+        const outputField = document.getElementById('output-field');
+        const terminalLabel = document.getElementById('terminal-label');
+        const statusBadge = document.getElementById('status-badge');
+        const roundText = document.getElementById('round-text');
+        const resultsPanel = document.getElementById('results-panel');
+        const quoteText = document.getElementById('quote-text');
+        const summaryScreen = document.getElementById('summary-screen');
+        const grandScoreDisplay = document.getElementById('grand-score');
+        const finalVerdict = document.getElementById('final-verdict');
+        const restartBtn = document.getElementById('restart-btn');
+        const dialButtons = document.querySelectorAll('.dial-btn');
+
+        const analysisQuotes = {
+            success: ["Connection established. Data packet routing successful.", "Perfect sequence trace. Audio signal synchronized.", "Line secure. Crystal clear working recall."],
+            fail: ["LINE ERROR: Dropped packets. Wrong node entered.", "Signal scrambled. Sequence trace broken.", "Trunk disconnect. Digital memory overflow error."]
+        };
+
+        // Standard operational audio context synthesis to reproduce authentic telephone DTMF dual-tones!
+        let audioCtx = null;
+        const dtmfFrequencies = {
+            '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+            '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+            '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+            '0': [941, 1336]
+        };
+
+        function playDTMFTone(digit) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                const freqs = dtmfFrequencies[digit];
+                if (!freqs) return;
+
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                osc1.type = 'sine'; osc1.frequency.value = freqs[0];
+                osc2.type = 'sine'; osc2.frequency.value = freqs[1];
+
+                gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                // Sharp cut link
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+
+                osc1.connect(gainNode);
+                osc2.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc1.start(); osc2.start();
+                osc1.stop(audioCtx.currentTime + 0.12); osc2.stop(audioCtx.currentTime + 0.12);
+            } catch(e) {}
+        }
+
+        function triggerHaptic(duration) {
+            if ('vibrate' in navigator) navigator.vibrate(duration);
+        }
+
+        function generateRandomNumberString() {
+            let res = "";
+            for (let i = 0; i < 8; i++) {
+                res += Math.floor(Math.random() * 10).toString();
+            }
+            return res;
+        }
+
+        function startSequenceRound() {
+            interactionState = false;
+            userConstructedString = "";
+            outputField.classList.remove('error');
+            resultsPanel.classList.remove('show');
+            
+            generatedTargetString = generateRandomNumberString();
+            
+            // Format output string to standard phone spacing format: XXXX-XXXX
+            outputField.textContent = `${generatedTargetString.slice(0,4)}-${generatedTargetString.slice(4)}`;
+            
+            statusBadge.textContent = "MEMORIZE";
+            statusBadge.className = "status-badge";
+            terminalLabel.textContent = "INCOMING PHONE TRUNK LINE";
+            roundText.textContent = `ROUND ${currentRound}/${totalRounds}`;
+
+            // Enforce hard 2000ms visual buffer cut window
+            memorizeTimeout = setTimeout(() => {
+                triggerHaptic(30);
+                statusBadge.textContent = "DIAL";
+                statusBadge.classList.add('inputting');
+                terminalLabel.textContent = "RE-ENTER PUNCH SEQUENCE";
+                outputField.textContent = "---- ----";
+                interactionState = true;
+            }, 2000);
+        }
+
+        dialButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const val = btn.getAttribute('data-val');
+                if (!interactionState || val === '*' || val === '#') return;
+                
+                playDTMFTone(val);
+                triggerHaptic(12);
+                
+                userConstructedString += val;
+                
+                // Update live text layout display
+                let standardMask = "---- ----".split('');
+                let pureIndex = 0;
+                for (let i = 0; i < standardMask.length; i++) {
+                    if (standardMask[i] === ' ') continue;
+                    if (pureIndex < userConstructedString.length) {
+                        standardMask[i] = userConstructedString[pureIndex];
+                        pureIndex++;
+                    }
+                }
+                outputField.textContent = standardMask.join('');
+
+                // Check string completion event condition immediately at 8 characters length
+                if (userConstructedString.length === 8) {
+                    evaluateDialSequence();
+                }
+            });
+        });
+
+        function evaluateDialSequence() {
+            interactionState = false;
+            
+            const isMatch = userConstructedString === generatedTargetString;
+            let typeKey;
+
+            if (isMatch) {
+                successfulConnections++;
+                typeKey = 'success';
+                triggerHaptic([30, 40, 30]);
+            } else {
+                typeKey = 'fail';
+                outputField.classList.add('error');
+                triggerHaptic(120);
+            }
+
+            quoteText.textContent = `"${analysisQuotes[typeKey][Math.floor(Math.random() * analysisQuotes[typeKey].length)]}"`;
+            resultsPanel.classList.add('show');
+
+            setTimeout(() => {
+                if (currentRound < totalRounds) {
+                    currentRound++;
+                    startSequenceRound();
+                } else {
+                    terminateMatrixSession();
+                }
+            }, 1800);
+        }
+
+        function terminateMatrixSession() {
+            grandScoreDisplay.textContent = `${successfulConnections}/${totalRounds}`;
+            
+            let verdict;
+            if (successfulConnections === totalRounds) verdict = "Flawless short-term phonological memory allocation.";
+            else if (successfulConnections >= 1) verdict = "Average sequential block processing capacity.";
+            else verdict = "Severe attention span fragmentation or digit leakage detected.";
+
+            finalVerdict.textContent = verdict;
+            summaryScreen.classList.add('active');
+            triggerHaptic([50, 50, 80]);
+        }
+
+        restartBtn.addEventListener('click', () => {
+            triggerHaptic([20, 20]);
+            currentRound = 1;
+            successfulConnections = 0;
+            summaryScreen.classList.remove('active');
+            startSequenceRound();
+        });
+
+        startSequenceRound();
+    </script>
+</body>
+</html>
