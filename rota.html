@@ -1,0 +1,734 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROTA - Visual Symmetry Recall</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300..800&family=Product+Sans:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --card-color: #1a2333;
+            --accent-color: #f59e0b;
+            --target-color: #10b981;
+            --guess-color: #ef4444;
+            --text-color: #ffffff;
+            --font-family: 'Product Sans', 'Open Sans', system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(-45deg, #090a10, #1c150c, #0f172a, #111424);
+            background-size: 400% 400%;
+            animation: gradientBG 12s ease infinite;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            padding: 12px;
+            overflow: hidden;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .game-container {
+            background-color: var(--card-color);
+            padding: 1.5rem 1.2rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            position: relative;
+            backdrop-filter: blur(8px);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            background: linear-gradient(to right, #fff, #fcd34d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1.2rem;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            background: rgba(0,0,0,0.2);
+            padding: 0.4rem 0.8rem;
+            border-radius: 50px;
+        }
+
+        .phase-indicator {
+            background: var(--accent-color);
+            color: #0f172a;
+            padding: 0.3rem 0.7rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+
+        .phase-indicator.reconstruct {
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        .round-tracker {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #94a3b8;
+        }
+
+        .target-box {
+            background: rgba(245, 158, 11, 0.05);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            padding: 0.6rem;
+            border-radius: 14px;
+            margin-bottom: 1.2rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .countdown-text {
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+        }
+
+        .countdown-banner {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 4px;
+            background: var(--accent-color);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 1.5s linear;
+            z-index: 20;
+        }
+
+        .canvas-area {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            margin: 0 auto 1rem auto;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 16px;
+            border: 1px dashed rgba(255, 255, 255, 0.03);
+            padding: 10px;
+        }
+
+        .shape-container {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .shape {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .target-shape {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .target-shape.reveal {
+            opacity: 0.45;
+        }
+
+        /* SVG Shape Renderings */
+        .triangle-svg {
+            fill: rgba(239, 68, 68, 0.1);
+            stroke: var(--guess-color);
+            stroke-width: 3;
+        }
+        .triangle-target-svg {
+            fill: none;
+            stroke: var(--target-color);
+            stroke-width: 3;
+            stroke-dasharray: 4 3;
+        }
+
+        .square-svg {
+            fill: rgba(239, 68, 68, 0.1);
+            stroke: var(--guess-color);
+            stroke-width: 3;
+        }
+        .square-target-svg {
+            fill: none;
+            stroke: var(--target-color);
+            stroke-width: 3;
+            stroke-dasharray: 4 3;
+        }
+
+        .controls-wrapper {
+            background: rgba(0,0,0,0.15);
+            border-radius: 16px;
+            padding: 0.8rem;
+            margin-bottom: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            opacity: 0.4;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .controls-wrapper.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .slider-row {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .slider-row label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 0.2rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .slider-row label span {
+            color: #94a3b8;
+        }
+
+        .slider-hint-sub {
+            font-size: 0.68rem;
+            color: #64748b;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-top: 0.2rem;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #2a3649;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn {
+            background-color: #2e3c52;
+            color: var(--text-color);
+            border: none;
+            padding: 0.9rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            width: 100%;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results {
+            margin-top: 0;
+            height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .results.show {
+            height: 155px; 
+            opacity: 1;
+            margin-top: 1.2rem;
+        }
+
+        .score-display {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .breakdown {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+            line-height: 1.4;
+        }
+
+        .funny-quote {
+            font-size: 0.82rem;
+            font-style: italic;
+            color: #94a3b8;
+            padding: 0.4rem 0.8rem;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            display: inline-block;
+            max-width: 100%;
+            line-height: 1.4;
+        }
+
+        .summary-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #111827;
+            border-radius: 24px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .summary-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .final-score-title {
+            font-size: 1rem;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .final-score-big {
+            font-size: 3.8rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 25px rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="summary-overlay" id="summary-screen">
+            <div class="final-score-title">Final Symmetry Recall</div>
+            <div class="final-score-big" id="grand-score">000</div>
+            <div id="final-verdict" style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem; padding: 0 1rem; font-style: italic;"></div>
+            <button class="btn" id="restart-btn" style="background: var(--accent-color); color: #0f172a;">PLAY AGAIN</button>
+        </div>
+
+        <h1>ROTA</h1>
+        <div class="subtitle">Symmetry Recall Matrix</div>
+
+        <div class="game-header">
+            <div class="phase-indicator" id="phase-badge">OBSERVE</div>
+            <div class="round-tracker" id="round-text">ROUND 1/5</div>
+        </div>
+
+        <div class="target-box">
+            <div class="countdown-text" id="status-message">MEMORIZE THE ORIENTATION...</div>
+            <div class="countdown-banner" id="countdown-bar"></div>
+        </div>
+
+        <div class="canvas-area">
+            <div class="shape-container">
+                <svg class="target-shape" id="target-tri-shape" viewBox="0 0 100 100">
+                    <polygon points="50,15 85,80 15,80" class="triangle-target-svg"/>
+                </svg>
+                <svg class="shape" id="guess-tri-shape" viewBox="0 0 100 100">
+                    <polygon points="50,15 85,80 15,80" class="triangle-svg"/>
+                </svg>
+            </div>
+            
+            <div class="shape-container">
+                <svg class="target-shape" id="target-sq-shape" viewBox="0 0 100 100">
+                    <rect x="20" y="20" width="60" height="60" class="square-target-svg"/>
+                </svg>
+                <svg class="shape" id="guess-sq-shape" viewBox="0 0 100 100">
+                    <rect x="20" y="20" width="60" height="60" class="square-svg"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="controls-wrapper" id="controls-panel">
+            <div class="slider-row">
+                <label>Match Triangle <span id="label-tri-val">0°</span></label>
+                <input type="range" id="tri-slider" min="0" max="360" value="0">
+                <div class="slider-hint-sub">Symmetry: Triggers every 120°</div>
+            </div>
+            <div class="slider-row">
+                <label>Match Square <span id="label-sq-val">0°</span></label>
+                <input type="range" id="sq-slider" min="0" max="360" value="0">
+                <div class="slider-hint-sub">Symmetry: Triggers every 90°</div>
+            </div>
+        </div>
+        
+        <button class="btn" id="action-btn" disabled>MEMORIZING...</button>
+
+        <div class="results" id="results-panel">
+            <div class="score-display" id="score-text">Score: 0</div>
+            <div class="breakdown" id="breakdown-text">
+                Guess: Tri / Sq<br>
+                Target: Tri / Sq
+            </div>
+            <div class="funny-quote" id="quote-text">"Symmetry tracking state..."</div>
+        </div>
+    </div>
+
+    <script>
+        let currentRound = 1;
+        const totalRounds = 5;
+        let runningScoreTotal = 0;
+        
+        let targetTriAngle = 0;
+        let targetSqAngle = 0;
+        let currentTriGuess = 0;
+        let currentSqGuess = 0;
+        
+        let lastVibratedTri = 0;
+        let lastVibratedSq = 0;
+        let isEvaluated = false;
+        let setupTimeout = null;
+
+        const masterQuotes = {
+            perfect: [
+                "Exceptional spatial awareness! You mastered the shape symmetries.",
+                "Flawless visual convergence. Complete matrix synchronization.",
+                "Geometric intuition at maximum capacity."
+            ],
+            excellent: [
+                "Superb replication tracking. You hit the symmetry nodes perfectly.",
+                "Highly optimal short-term visual buffer accuracy.",
+                "Sensory data processed and matched beautifully."
+            ],
+            average: [
+                "Decent tracking, though your alignment drifted a few degrees.",
+                "Caught the layout profile, missed the absolute geometric center.",
+                "Passable spatial coordination."
+            ],
+            bad: [
+                "You completely missed the symmetry balance loops.",
+                "The primitive structures were highly askew on recall look.",
+                "Orientation tracking properties dropped below critical value thresholds."
+            ],
+            terrible: [
+                "Total structural visualization wipeout.",
+                "You avoided every viable visual symmetry point.",
+                "Calibration required. Short term storage cache was completely clear."
+            ]
+        };
+
+        let workingQuotesPool = {};
+
+        function resetQuotesPool() {
+            workingQuotesPool = {
+                perfect: [...masterQuotes.perfect],
+                excellent: [...masterQuotes.excellent],
+                average: [...masterQuotes.average],
+                bad: [...masterQuotes.bad],
+                terrible: [...masterQuotes.terrible]
+            };
+        }
+
+        function triggerHaptic(duration) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(duration);
+            }
+        }
+
+        const phaseBadge = document.getElementById('phase-badge');
+        const statusMessage = document.getElementById('status-message');
+        const controlsPanel = document.getElementById('controls-panel');
+        
+        const guessTriShape = document.getElementById('guess-tri-shape');
+        const guessSqShape = document.getElementById('guess-sq-shape');
+        const targetTriShape = document.getElementById('target-tri-shape');
+        const targetSqShape = document.getElementById('target-sq-shape');
+        
+        const triSlider = document.getElementById('tri-slider');
+        const sqSlider = document.getElementById('sq-slider');
+        const labelTriVal = document.getElementById('label-tri-val');
+        const labelSqVal = document.getElementById('label-sq-val');
+        
+        const actionBtn = document.getElementById('action-btn');
+        const resultsPanel = document.getElementById('results-panel');
+        const scoreText = document.getElementById('score-text');
+        const breakdownText = document.getElementById('breakdown-text');
+        const quoteText = document.getElementById('quote-text');
+        const roundText = document.getElementById('round-text');
+        const countdownBar = document.getElementById('countdown-bar');
+        
+        const summaryScreen = document.getElementById('summary-screen');
+        const grandScoreDisplay = document.getElementById('grand-score');
+        const finalVerdict = document.getElementById('final-verdict');
+        const restartBtn = document.getElementById('restart-btn');
+
+        function initRound() {
+            isEvaluated = false;
+            clearTimeout(setupTimeout);
+            
+            // Generate arbitrary raw orientations
+            targetTriAngle = Math.floor(Math.random() * 360);
+            targetSqAngle = Math.floor(Math.random() * 360);
+            
+            // Show target state initially for observation phase
+            guessTriShape.style.transform = `rotate(${targetTriAngle}deg)`;
+            guessSqShape.style.transform = `rotate(${targetSqAngle}deg)`;
+            
+            targetTriShape.classList.remove('reveal');
+            targetSqShape.classList.remove('reveal');
+            resultsPanel.classList.remove('show');
+            
+            phaseBadge.textContent = "OBSERVE";
+            phaseBadge.classList.remove('reconstruct');
+            statusMessage.textContent = "MEMORIZE THE SHAPE POSITIONS...";
+            actionBtn.textContent = "MEMORIZING...";
+            actionBtn.disabled = true;
+            
+            controlsPanel.classList.remove('active');
+            triSlider.value = 0;
+            sqSlider.value = 0;
+            currentTriGuess = 0;
+            currentSqGuess = 0;
+            labelTriVal.textContent = "0°";
+            labelSqVal.textContent = "0°";
+
+            roundText.textContent = `ROUND ${currentRound}/${totalRounds}`;
+            
+            countdownBar.style.transition = 'none';
+            countdownBar.style.transform = 'scaleX(1)';
+            
+            setTimeout(() => {
+                countdownBar.style.transition = 'transform 1500ms linear';
+                countdownBar.style.transform = 'scaleX(0)';
+            }, 50);
+
+            setupTimeout = setTimeout(() => {
+                triggerHaptic(20);
+                phaseBadge.textContent = "RECONSTRUCT";
+                phaseBadge.classList.add('reconstruct');
+                statusMessage.textContent = "RECREATE WHAT YOU SAW (ANY SYMMETRY COUNTS)";
+                
+                // Hide original state - set back to 0
+                guessTriShape.style.transform = `rotate(0deg)`;
+                guessSqShape.style.transform = `rotate(0deg)`;
+                
+                controlsPanel.classList.add('active');
+                triSlider.disabled = false;
+                sqSlider.disabled = false;
+                actionBtn.textContent = "SUBMIT GUESS";
+                actionBtn.disabled = false;
+            }, 1550);
+        }
+
+        triSlider.addEventListener('input', (e) => {
+            if (isEvaluated) return;
+            currentTriGuess = parseInt(e.target.value);
+            labelTriVal.textContent = `${currentTriGuess}°`;
+            guessTriShape.style.transform = `rotate(${currentTriGuess}deg)`;
+
+            // Haptic click triggers every 120 degrees on the symmetry nodes
+            if (currentTriGuess % 120 === 0 || Math.abs(currentTriGuess - lastVibratedTri) >= 15) {
+                triggerHaptic(6); 
+                lastVibratedTri = currentTriGuess;
+            }
+        });
+
+        sqSlider.addEventListener('input', (e) => {
+            if (isEvaluated) return;
+            currentSqGuess = parseInt(e.target.value);
+            labelSqVal.textContent = `${currentSqGuess}°`;
+            guessSqShape.style.transform = `rotate(${currentSqGuess}deg)`;
+
+            // Haptic click triggers every 90 degrees on the symmetry nodes
+            if (currentSqGuess % 90 === 0 || Math.abs(currentSqGuess - lastVibratedSq) >= 15) {
+                triggerHaptic(6); 
+                lastVibratedSq = currentSqGuess;
+            }
+        });
+
+        actionBtn.addEventListener('click', () => {
+            if (!isEvaluated) {
+                evaluateCurrentGuess();
+            } else {
+                triggerHaptic(15);
+                advanceMatrixStep();
+            }
+        });
+
+        function getUniqueQuote(score) {
+            let category;
+            if (score === 100) category = 'perfect';
+            else if (score >= 85) category = 'excellent';
+            else if (score >= 60) category = 'average';
+            else if (score >= 35) category = 'bad';
+            else category = 'terrible';
+
+            if (workingQuotesPool[category].length === 0) {
+                workingQuotesPool[category] = [...masterQuotes[category]];
+            }
+
+            const randomIndex = Math.floor(Math.random() * workingQuotesPool[category].length);
+            return workingQuotesPool[category].splice(randomIndex, 1)[0];
+        }
+
+        // Custom function computing minimal angular error under periodic symmetry
+        function computeSymmetryError(target, guess, modularPeriod) {
+            let rawDiff = Math.abs(target - guess) % modularPeriod;
+            return Math.min(rawDiff, modularPeriod - rawDiff);
+        }
+
+        function evaluateCurrentGuess() {
+            isEvaluated = true;
+            triSlider.disabled = true;
+            sqSlider.disabled = true;
+
+            // Display phantom solution paths beneath the output canvas area
+            targetTriShape.style.transform = `rotate(${targetTriAngle}deg)`;
+            targetSqShape.style.transform = `rotate(${targetSqAngle}deg)`;
+            targetTriShape.classList.add('reveal');
+            targetSqShape.classList.add('reveal');
+
+            // Calculate true error based on symmetry periods (120 for Triangle, 90 for Square)
+            const triError = computeSymmetryError(targetTriAngle, currentTriGuess, 120);
+            const sqError = computeSymmetryError(targetSqAngle, currentSqGuess, 90);
+            
+            // Score tracking configuration parameters
+            const triScoreComponent = Math.max(0, 50 - (triError * 1.5));
+            const sqScoreComponent = Math.max(0, 50 - (sqError * 2.0));
+            const roundScore = Math.floor(triScoreComponent + sqScoreComponent);
+            
+            runningScoreTotal += roundScore;
+
+            if (roundScore === 100) triggerHaptic([35, 50, 35]); 
+            else if (roundScore >= 85) triggerHaptic(40); 
+            else if (roundScore >= 60) triggerHaptic(20); 
+            else triggerHaptic(70); 
+
+            scoreText.textContent = `Score: +${roundScore}`;
+            
+            breakdownText.innerHTML = `
+                Visual Delta Error:<br>
+                ▲ Triangle: <span style="color:var(--accent-color)">${triError.toFixed(1)}° deviation</span> | ■ Square: <span style="color:var(--accent-color)">${sqError.toFixed(1)}° deviation</span>
+            `;
+            quoteText.textContent = `"${getUniqueQuote(roundScore)}"`;
+
+            if (roundScore >= 85) scoreText.style.color = 'var(--target-color)';
+            else if (roundScore >= 60) scoreText.style.color = 'var(--accent-color)';
+            else scoreText.style.color = 'var(--guess-color)';
+
+            resultsPanel.classList.add('show');
+            
+            if (currentRound === totalRounds) {
+                actionBtn.textContent = "VIEW FINAL EVALUATION";
+            } else {
+                actionBtn.textContent = "CONTINUE MATRIX";
+            }
+        }
+
+        function advanceMatrixStep() {
+            if (currentRound < totalRounds) {
+                currentRound++;
+                initRound();
+            } else {
+                const maxPossible = totalRounds * 100;
+                grandScoreDisplay.textContent = `${runningScoreTotal}/${maxPossible}`;
+                
+                let verdict;
+                if (runningScoreTotal >= 430) verdict = "Flawless photographic grid matrix storage calibration.";
+                else if (runningScoreTotal >= 340) verdict = "Excellent symmetry matching capabilities.";
+                else if (runningScoreTotal >= 200) verdict = "Minor structural fading recorded in visual memory blocks.";
+                else verdict = "Symmetry arrays completely unlinked. Recalibrate operational snapshot profile.";
+                
+                finalVerdict.textContent = verdict;
+                summaryScreen.classList.add('active');
+                triggerHaptic([50, 60, 50, 60, 80]);
+            }
+        }
+
+        restartBtn.addEventListener('click', () => {
+            triggerHaptic([20, 40, 20]);
+            currentRound = 1;
+            runningScoreTotal = 0;
+            summaryScreen.classList.remove('active');
+            resetQuotesPool();
+            initRound();
+        });
+
+        resetQuotesPool();
+        initRound();
+    </script>
+</body>
+</html>
