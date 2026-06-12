@@ -37,7 +37,7 @@
         .btn-reset { grid-column: span 2; font-size: 0.9rem; font-weight: 400; color: #718096; padding: 12px; background: transparent; border: none; }
         .status { font-size: 0.75rem; color: var(--text-muted); margin-top: 20px; }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 
@@ -50,38 +50,53 @@
             <button class="btn" id="plus" aria-label="Increase">+</button>
             <button class="btn btn-reset" id="reset">Reset Counter</button>
         </div>
-        <div id="status" class="status">Connecting...</div>
+        <div id="status" class="status">Linking to Display System...</div>
     </div>
 
     <script>
         let count = 1;
+        let activeConnection = null;
         const numSpan = document.getElementById('num-span');
         const statusDiv = document.getElementById('status');
 
-        const supabaseUrl = 'https://pcurvshvbygbyvwsbshb.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjdXJ2c2h2YnlnYnl2d3Nic2hiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTgzMTY4NDMsImV4cCI6MjAzMzg5Mjg0M30.b3B6XzkzSFNsc2hBc3U4OWg5ODIzN3NoYWtiY2tqYmhjYmNqYg';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        // Target matching Room name
+        const targetRoom = '4b_yhpd1306';
+        
+        // Create an anonymous peer client for the phone
+        const peer = new Peer();
 
-        // Must match the exact channel name used in viewer.html
-        const channelRoom = 'room_abc_123'; 
-        const channel = supabase.channel(channelRoom);
-
-        channel.subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-                statusDiv.textContent = "Connected to terminal display";
-                sendUpdate();
-            } else {
-                statusDiv.textContent = "Connecting...";
-            }
+        peer.on('open', () => {
+            connectToDisplay();
         });
+
+        function connectToDisplay() {
+            statusDiv.textContent = "Connecting straight to display...";
+            
+            // Open direct bridge to the viewer page
+            activeConnection = peer.connect(targetRoom, { reliable: true });
+
+            activeConnection.on('open', () => {
+                statusDiv.textContent = "Link established directly";
+                statusDiv.style.color = "#2d3748";
+                sendUpdate();
+            });
+
+            activeConnection.on('close', () => {
+                statusDiv.textContent = "Display connection lost. Reconnecting...";
+                setTimeout(connectToDisplay, 3000);
+            });
+
+            activeConnection.on('error', () => {
+                statusDiv.textContent = "Failed to touch display. Retrying...";
+                setTimeout(connectToDisplay, 4000);
+            });
+        }
 
         function sendUpdate() {
             numSpan.textContent = String(count).padStart(3, '0');
-            channel.send({
-                type: 'broadcast',
-                event: 'number-change',
-                payload: { value: count },
-            });
+            if (activeConnection && activeConnection.open) {
+                activeConnection.send({ value: count });
+            }
         }
 
         document.getElementById('plus').addEventListener('click', () => {
