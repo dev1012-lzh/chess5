@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Display</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            --glass-bg: rgba(255, 255, 255, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --text-primary: #2d3748;
+            --text-muted: #718096;
+            --accent: #4a5568;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .viewer-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            padding: 40px 60px;
+            border-radius: 32px;
+            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04),
+                        0 4px 4px 0 rgba(255, 255, 255, 0.5) inset;
+            width: 80%;
+            max-width: 450px;
+        }
+
+        .label {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .number {
+            font-size: 9rem;
+            font-weight: 200;
+            letter-spacing: -2px;
+            color: var(--text-primary);
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .status {
+            margin-top: 30px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            transition: color 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="viewer-card">
+        <div class="label">Now</div>
+        <div id="number-display" class="number">001</div>
+        <div id="status" class="status">Connecting...</div>
+    </div>
+
+    <script>
+        const display = document.getElementById('number-display');
+        const statusDiv = document.getElementById('status');
+        
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // Elegant, lower-volume Chime 
+        function playDingDong() {
+            initAudio();
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            // Soft Tone 1 (Ding)
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(523.25, now); // C5
+            gain1.gain.setValueAtTime(0.25, now); // Soft volume
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+            osc1.connect(gain1); gain1.connect(audioCtx.destination);
+            osc1.start(now); osc1.stop(now + 1.0);
+
+            // Soft Tone 2 (Dong)
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(392.00, now + 0.35); // G4
+            gain2.gain.setValueAtTime(0, now);
+            gain2.gain.setValueAtTime(0.25, now + 0.35);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+            osc2.connect(gain2); gain2.connect(audioCtx.destination);
+            osc2.start(now + 0.35); osc2.stop(now + 1.5);
+        }
+
+        // Change 'clean_mesh_room_77' to your own custom string
+        const socketRoom = "4b2026parentsdayyuhua_7sa5"; 
+        const ws = new WebSocket(`wss://demo.piesocket.com/v3/${socketRoom}?api_key=VCXCEuvhGcBDP7XhiJJUDvR1e1D3YfV0w9E6UdSysg76999497&notify_self=0`);
+
+        ws.onopen = () => {
+            statusDiv.textContent = "Connected. Tap screen once to arm audio.";
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "UPDATE_NUM") {
+                display.textContent = String(data.value).padStart(3, '0');
+                playDingDong();
+            }
+        };
+
+        ws.onclose = () => {
+            statusDiv.textContent = "Lost connection. Reconnecting...";
+            setTimeout(() => location.reload(), 3000);
+        };
+
+        window.addEventListener('click', () => {
+            initAudio();
+            statusDiv.textContent = "System active & sound ready";
+        });
+    </script>
+</body>
+</html>
